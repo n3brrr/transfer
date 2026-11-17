@@ -39,6 +39,8 @@ export type PeerMsg =
   // Los textos grandes se envían en partes (un mensaje WebRTC admite ~256 KB)
   | { t: 'text-add'; id: string; format: string; content: string; part: number; parts: number }
   | { t: 'text-remove'; id: string }
+  // Nombre con el que el otro dispositivo quiere que se le vea (se envía al abrir el canal y al cambiarlo)
+  | { t: 'hello'; name: string }
   | { t: 'bye' }
   // Latido: cualquier mensaje recibido cuenta como señal de vida; el ping solo la provoca cuando no hay tráfico
   | { t: 'ping' }
