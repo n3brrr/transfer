@@ -27,7 +27,8 @@ export type FromServer =
 
 // Dispositivo ↔ dispositivo (canal WebRTC, JSON; los bloques de archivo van en binario)
 export type PeerMsg =
-  | { t: 'file-add'; id: string; name: string; size: number; mime: string }
+  // thumb: miniatura JPEG diminuta como data URL (solo imágenes); el receptor la valida antes de mostrarla
+  | { t: 'file-add'; id: string; name: string; size: number; mime: string; thumb?: string }
   | { t: 'file-remove'; id: string }
   // `offset`: al reanudar, el receptor ya tiene escritos esos bytes y el emisor sigue desde ahí
   | { t: 'file-request'; id: string; offset?: number }
