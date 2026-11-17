@@ -109,6 +109,14 @@ export async function sendFile(ch: RTCDataChannel, id: string, file: Blob, s: Se
   return true;
 }
 
+// Aviso previo (antes de pulsar Descargar) para archivos grandes en navegadores que guardan en memoria; null si no hace falta
+export function memoryNotice(size: number): string | null {
+  if (hasSavePicker()) return null;
+  if (size > MEMORY_MAX) return `Pesa más de ${formatSize(MEMORY_MAX)}: este navegador no puede guardarlo. Descárgalo desde Chrome o Edge en un ordenador.`;
+  if (size > (isMobile() ? MEMORY_WARNING_MOBILE : MEMORY_WARNING_PC)) return 'Este navegador lo guarda en memoria antes de descargarlo y puede quedarse sin ella.';
+  return null;
+}
+
 // Prepara dónde guardar el archivo. Hay que llamarla directamente desde el clic (sin esperas antes):
 // showSaveFilePicker exige un gesto del usuario. Lanza AbortError si el usuario cancela, o AvisoError.
 export async function prepareDestination(item: FileInfo): Promise<Destination> {

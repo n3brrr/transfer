@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Sala } from '../state/sala';
-import { formatSize, isMobile } from '../files/transfer';
+import { formatSize, isMobile, memoryNotice } from '../files/transfer';
 import { isDangerousName } from '../files/validar';
 import { Check, FileArchive, FileText, Film, Image as ImageIcon, Music, Trash2, type LucideIcon } from 'lucide-react';
 
@@ -322,6 +322,9 @@ export default function Archivos({ sala }: { sala: Sala }) {
                     </p>
                     {!f.mine && isDangerousName(f.name) && (
                       <p className="mt-1 text-xs font-medium text-acento-texto">Archivo ejecutable: ábrelo solo si lo esperabas y confías en el otro dispositivo</p>
+                    )}
+                    {!f.mine && f.available && !t && memoryNotice(f.size) && (
+                      <p className="mt-1 text-xs text-suave">{memoryNotice(f.size)}</p>
                     )}
                     {t && (
                       <div className="mt-2">
