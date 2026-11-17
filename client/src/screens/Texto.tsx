@@ -228,6 +228,13 @@ export default function Texto({ sala }: { sala: Sala }) {
     }
   }
 
+  // Quita todos los fragmentos de este dispositivo (los del otro no se tocan)
+  function vaciar() {
+    if (!confirm('¿Quitar todos tus textos de la lista? El otro dispositivo también dejará de verlos.')) return;
+    if (editando && sala.texts.some((t) => t.id === editando && t.mine)) restaurar();
+    for (const t of sala.texts) if (t.mine) sala.removeText(t.id);
+  }
+
   function anadir() {
     if (vacio || demasiado) return;
     const f = manual ? formato : detectar(contenido); // por si se pulsa antes de que acabe la espera
@@ -321,11 +328,21 @@ export default function Texto({ sala }: { sala: Sala }) {
       {sala.texts.length === 0 ? (
         <p className="text-center text-sm opacity-75">Aún no hay textos. Lo que añadas aquí lo verá el otro dispositivo.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {sala.texts.map((t) => (
-            <Fragmento key={t.id} item={t} editando={editando === t.id} onEditar={() => editar(t)} onQuitar={() => quitar(t.id)} />
-          ))}
-        </ul>
+        <>
+          {sala.texts.some((t) => t.mine) && (
+            <div className="mb-3 flex justify-end">
+              <button type="button" className={herramienta} onClick={vaciar}>
+                <Trash2 className="size-4" aria-hidden="true" />
+                Vaciar mis textos
+              </button>
+            </div>
+          )}
+          <ul className="flex flex-col gap-3">
+            {sala.texts.map((t) => (
+              <Fragmento key={t.id} item={t} editando={editando === t.id} onEditar={() => editar(t)} onQuitar={() => quitar(t.id)} />
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
