@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import hljs from 'highlight.js/lib/core';
 import { Check, ClipboardPaste, Copy, Eraser, Trash2 } from 'lucide-react';
-import { FORMATOS, detectar, nombreFormato } from '../files/formatos';
+import { FORMATOS, nombreFormato } from '../files/formatos';
+import { detectar, resaltar } from '../files/resaltado';
 import type { Sala, TextItem } from '../state/sala';
 
 const MAX_BYTES = 1024 * 1024;
@@ -63,15 +63,8 @@ function Fragmento({ item, editando, onEditar, onQuitar }: FragmentoProps) {
   useEffect(() => () => clearTimeout(temporizador.current), []);
 
   const esTexto = item.format === 'text';
-  const html = useMemo(() => {
-    if (esTexto || item.content.length > MAX_RESALTADO || !hljs.getLanguage(item.format)) return null;
-    try {
-      // highlight.js escapa el HTML del contenido: es la única salida que se inyecta
-      return hljs.highlight(item.content, { language: item.format, ignoreIllegals: true }).value;
-    } catch {
-      return null;
-    }
-  }, [item.content, item.format, esTexto]);
+  // highlight.js escapa el HTML del contenido: es la única salida que se inyecta
+  const html = useMemo(() => resaltar(item.content, item.format, MAX_RESALTADO), [item.content, item.format]);
   const lineas = useMemo(() => item.content.split('\n').length, [item.content]);
   const largo = lineas > LINEAS_PLEGADO || item.content.length > CARACTERES_PLEGADO;
   const plegado = largo && !abierto;

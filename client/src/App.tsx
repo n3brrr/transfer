@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { FromServer, PeerMsg } from '../../shared/protocol';
 import { isValidToken, sanitizeToken } from '../../shared/token';
 import { connectPeer } from './net/peer';
@@ -8,7 +8,8 @@ import Header, { type Pestana } from './ui/Header';
 import Archivos from './screens/Archivos';
 import Inicio from './screens/Inicio';
 import SalaCreada, { Conectando } from './screens/SalaCreada';
-import Texto from './screens/Texto';
+// La pestaña Texto lleva highlight.js: se descarga aparte para que Inicio cargue más rápido
+const Texto = lazy(() => import('./screens/Texto'));
 
 type Pantalla = 'inicio' | 'creada' | 'conectando' | 'sala';
 type Estado = 'conectando' | 'reconectando' | 'fallo';
@@ -43,7 +44,9 @@ function Sala({ channel, onSalir }: { channel: RTCDataChannel; onSalir(): void }
           <Archivos sala={sala} />
         </div>
         <div id="panel-texto" role="tabpanel" aria-labelledby="tab-texto" hidden={pestana !== 'texto'}>
-          <Texto sala={sala} />
+          <Suspense fallback={null}>
+            <Texto sala={sala} />
+          </Suspense>
         </div>
       </main>
     </div>
