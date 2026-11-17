@@ -1,0 +1,12 @@
+{$DOMAIN} {
+	tls {
+		dns duckdns {$DUCKDNS_TOKEN}
+	}
+	header {
+		# La CSP y el resto de cabeceras de seguridad las pone la app (server/index.ts)
+		Strict-Transport-Security "max-age=2592000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+	reverse_proxy app:8080
+}
