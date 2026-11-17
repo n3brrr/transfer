@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+client/dist
+dist-server
+tmp
+.env
+.env.*
+.git
+.gitignore
+.gitattributes
+.superpowers
+docs
+tests
+vitest.config.ts
+*.md
+docker-compose.yml
