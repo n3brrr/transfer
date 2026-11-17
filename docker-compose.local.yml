@@ -1,0 +1,30 @@
+# Modo rápido para usarla solo en tu red de casa, bajo demanda y sin HTTPS ni dominio.
+# Arrancar:  docker compose -f docker-compose.local.yml up --build
+# Parar:     Ctrl+C (el contenedor se borra solo) o  docker compose -f docker-compose.local.yml down
+# Después abre http://IP-DE-TU-PC:8080 en los dos dispositivos. Ver docs/arranque.md ("Modo rápido").
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: transferir:local
+    container_name: transferir
+    # BIND_IP (opcional, variable de entorno): IP local del PC para no publicar el puerto en otras interfaces
+    ports:
+      - "${BIND_IP:-0.0.0.0}:8080:8080"
+    init: true
+    read_only: true # el servidor no escribe en disco
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 100
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
