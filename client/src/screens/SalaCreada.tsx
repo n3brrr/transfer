@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatToken } from '../../../shared/token';
 import { copiarTexto } from '../ui/portapapeles';
+import QrCodigo from '../ui/QrCodigo';
 
 const EXPIRA_MS = 5 * 60_000;
 
@@ -119,7 +120,9 @@ export default function SalaCreada({ token, solicitud, onAceptar, onRechazar, on
             >
               {formatToken(token)}
             </p>
-            <p className="text-sm text-suave">Escríbelo en el otro dispositivo</p>
+            <p className="text-sm text-suave">Escríbelo en el otro dispositivo o escanea el QR</p>
+            {/* El código va en la parte tras «#»: el navegador no la envía al servidor */}
+            <QrCodigo texto={`${location.origin}/#${token}`} etiqueta="Código QR para unirse a la sala" />
             <button className="btn btn-primario w-full" onClick={copiar}>
               {copiado === 'si' ? 'Copiado' : 'Copiar código'}
             </button>

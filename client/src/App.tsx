@@ -434,7 +434,12 @@ export default function App() {
   useEffect(() => {
     if (arrancado.current) return; // StrictMode ejecuta los efectos dos veces
     arrancado.current = true;
+    // Enlace del QR (/#CÓDIGO): se limpia de la barra y, si no hay sesión que recuperar, se une a esa sala
+    const codigo = sanitizeToken(location.hash.slice(1));
+    const delQr = location.hash !== '' && isValidToken(codigo);
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     if (tokenRef.current) void recuperar('reconectando');
+    else if (delQr) void entrar(codigo).then((f) => f && f !== 'cancelado' && cerrar(MENSAJES[f] ?? SIN_SERVIDOR));
   }, []);
 
   if (pantalla === 'sala' && channel) return <Sala channel={channel} onSalir={salir} />;
