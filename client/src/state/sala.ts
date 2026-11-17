@@ -5,8 +5,11 @@ import { replayEarly } from '../net/peer';
 import { TEXT_PART, parseMsg } from './mensajes';
 import {
   AvisoError,
+  folderDestination,
+  hasFolderPicker,
   hasSavePicker,
   keepAwake,
+  pickFolder,
   newSend,
   prepareDestination,
   sendFile,
@@ -637,6 +640,45 @@ export function useSala(channel: RTCDataChannel) {
       });
   }, []);
 
+  // Pide todos los archivos disponibles del otro dispositivo. Debe llamarse directamente desde el clic.
+  // Con selector de carpetas se elige una sola vez dónde guardar; sin selector (guardado en memoria) se pide uno a uno.
+  const downloadAll = useCallback(async () => {
+    const libres = () =>
+      filesRef.current.filter((f) => !f.mine && f.available && !wanted.current.has(f.id) && !paused.current.has(f.id) && current.current?.id !== f.id);
+    if (!libres().length) return;
+    if (!hasFolderPicker()) {
+      for (const f of libres()) download(f.id);
+      return;
+    }
+    if (picking.current) return void setNotice('Termina de elegir dónde guardar el archivo anterior');
+    picking.current = true;
+    setNotice(null);
+    const gen = generation.current;
+    try {
+      const dir = await pickFolder();
+      let fallos = 0;
+      for (const item of libres()) {
+        try {
+          const dest = await folderDestination(dir, item);
+          if (gen !== generation.current || !filesRef.current.some((f) => f.id === item.id && f.available)) {
+            settle(null, dest.discard(), item.name); // el archivo o la conexión se fueron mientras tanto
+            continue;
+          }
+          wanted.current.set(item.id, { item, dest, dl: null, offset: 0 });
+          setTransfer(item.id, { direction: 'in', fraction: 0, state: 'queued' });
+        } catch {
+          fallos++;
+        }
+      }
+      if (fallos) setNotice(`No se pudo preparar el guardado de ${fallos} ${fallos === 1 ? 'archivo' : 'archivos'}`);
+      next();
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) setNotice('No se pudo abrir la carpeta elegida');
+    } finally {
+      picking.current = false;
+    }
+  }, []);
+
   // Cancela una transferencia propia: una descarga (en cola o en marcha) o un envío
   const cancelDownload = useCallback((id: string) => {
     if (wanted.current.has(id) || paused.current.has(id)) return dropDownload(id, null);
@@ -656,6 +698,7 @@ export function useSala(channel: RTCDataChannel) {
     addText,
     removeText,
     download,
+    downloadAll,
     cancelDownload,
   };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Sala } from '../state/sala';
-import { formatEta, formatSize, isMobile, memoryNotice } from '../files/transfer';
+import { formatEta, formatSize, hasFolderPicker, hasSavePicker, isMobile, memoryNotice } from '../files/transfer';
 import { isDangerousName } from '../files/validar';
 import { Check, FileArchive, FileText, Film, Image as ImageIcon, Music, Smartphone, Trash2, Upload, type LucideIcon } from 'lucide-react';
 
@@ -178,6 +178,9 @@ export default function Archivos({ sala }: { sala: Sala }) {
   const [leyendo, setLeyendo] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const transfiriendo = Object.keys(sala.transfers).length > 0;
+  // Descargar todos: con selector de carpetas, o sin selector de guardado (memoria); con solo uno de archivo sueltos no cabe
+  const pendientes = sala.files.filter((f) => !f.mine && f.available && !sala.transfers[f.id]).length;
+  const puedeTodos = pendientes >= 2 && (hasFolderPicker() || !hasSavePicker());
 
   useEffect(() => {
     // Archivos y Texto están montados a la vez: solo actúa la pestaña visible
@@ -285,89 +288,98 @@ export default function Archivos({ sala }: { sala: Sala }) {
           <p className="mt-1 text-sm text-suave">Los que añadas aquí o en el otro dispositivo aparecerán en esta lista.</p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {sala.files.map((f) => {
-            const t = sala.transfers[f.id];
-            const porcentaje = t ? Math.floor(t.fraction * 100) : 0;
-            return (
-              <li key={f.id} className="entra flex flex-col gap-3 rounded-2xl border border-borde bg-superficie p-3 sm:flex-row sm:items-center">
-                <div className={`flex min-w-0 flex-1 items-start gap-3 ${f.available ? '' : 'opacity-60'}`}>
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-crema text-acento">
-                    <Icono tipo={tipoDe(f.name, f.mime)} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 font-medium [overflow-wrap:anywhere]" title={f.name}>
-                      {f.name}
-                    </p>
-                    <p className="text-xs text-suave">
-                      {formatSize(f.size)} · {f.mine ? 'Este dispositivo' : 'Otro dispositivo'}
-                      {!f.available && ' · No disponible'}
-                    </p>
-                    {!f.mine && isDangerousName(f.name) && (
-                      <p className="mt-1 text-xs font-medium text-acento-texto">Archivo ejecutable: ábrelo solo si lo esperabas y confías en el otro dispositivo</p>
-                    )}
-                    {!f.mine && f.available && !t && memoryNotice(f.size) && (
-                      <p className="mt-1 text-xs text-suave">{memoryNotice(f.size)}</p>
-                    )}
-                    {t && (
-                      <div className="mt-2">
-                        <p className="mb-1 text-xs font-medium">
-                          {estado(t)}
-                          {velocidad(t, f.size) && <span className="font-normal text-suave"> · {velocidad(t, f.size)}</span>}
-                        </p>
-                        {t.state !== 'queued' && (
-                          <div
-                            role="progressbar"
-                            aria-label={estado(t)}
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-valuenow={porcentaje}
-                            className={`barra ${t.state === 'paused' ? 'barra-pausada' : ''}`}
-                          >
-                            <div className="barra-relleno" style={{ width: `${porcentaje}%` }} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {!t && hechos[f.id] && (
-                      <p role="status" className="hecho mt-1 flex items-center gap-1 text-xs font-medium">
-                        <Check className="size-4 text-ok" strokeWidth={3} aria-hidden="true" />
-                        {hechos[f.id] === 'in' ? 'Descargado' : 'Enviado'}
+        <>
+          {puedeTodos && (
+            <div className="mb-3 flex justify-end">
+              <button type="button" className={principal} onClick={() => void sala.downloadAll()}>
+                Descargar todos ({pendientes})
+              </button>
+            </div>
+          )}
+          <ul className="flex flex-col gap-3">
+            {sala.files.map((f) => {
+              const t = sala.transfers[f.id];
+              const porcentaje = t ? Math.floor(t.fraction * 100) : 0;
+              return (
+                <li key={f.id} className="entra flex flex-col gap-3 rounded-2xl border border-borde bg-superficie p-3 sm:flex-row sm:items-center">
+                  <div className={`flex min-w-0 flex-1 items-start gap-3 ${f.available ? '' : 'opacity-60'}`}>
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-crema text-acento">
+                      <Icono tipo={tipoDe(f.name, f.mime)} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 font-medium [overflow-wrap:anywhere]" title={f.name}>
+                        {f.name}
                       </p>
-                    )}
+                      <p className="text-xs text-suave">
+                        {formatSize(f.size)} · {f.mine ? 'Este dispositivo' : 'Otro dispositivo'}
+                        {!f.available && ' · No disponible'}
+                      </p>
+                      {!f.mine && isDangerousName(f.name) && (
+                        <p className="mt-1 text-xs font-medium text-acento-texto">Archivo ejecutable: ábrelo solo si lo esperabas y confías en el otro dispositivo</p>
+                      )}
+                      {!f.mine && f.available && !t && memoryNotice(f.size) && (
+                        <p className="mt-1 text-xs text-suave">{memoryNotice(f.size)}</p>
+                      )}
+                      {t && (
+                        <div className="mt-2">
+                          <p className="mb-1 text-xs font-medium">
+                            {estado(t)}
+                            {velocidad(t, f.size) && <span className="font-normal text-suave"> · {velocidad(t, f.size)}</span>}
+                          </p>
+                          {t.state !== 'queued' && (
+                            <div
+                              role="progressbar"
+                              aria-label={estado(t)}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={porcentaje}
+                              className={`barra ${t.state === 'paused' ? 'barra-pausada' : ''}`}
+                            >
+                              <div className="barra-relleno" style={{ width: `${porcentaje}%` }} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {!t && hechos[f.id] && (
+                        <p role="status" className="hecho mt-1 flex items-center gap-1 text-xs font-medium">
+                          <Check className="size-4 text-ok" strokeWidth={3} aria-hidden="true" />
+                          {hechos[f.id] === 'in' ? 'Descargado' : 'Enviado'}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                {(t || f.mine || (f.available && !f.mine)) && (
-                  <div className="flex flex-wrap justify-end gap-2 sm:shrink-0 sm:flex-nowrap">
-                    {!f.mine && f.available && !t && (
-                      <button type="button" className={`${principal} flex-1 basis-32 sm:flex-none`} aria-label={`Descargar ${f.name}`} onClick={() => sala.download(f.id)}>
-                        Descargar
-                      </button>
-                    )}
-                    {t && (
-                      <button
-                        type="button"
-                        className={`${secundario} flex-1 basis-32 sm:flex-none`}
-                        aria-label={`Cancelar ${f.name}`}
-                        onClick={() => {
-                          cancelados.current.add(f.id);
-                          sala.cancelDownload(f.id);
-                        }}
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                    {f.mine && (
-                      <button type="button" className={icono} aria-label={`Quitar ${f.name}`} title="Quitar archivo" onClick={() => sala.removeFile(f.id)}>
-                        <Trash2 className="size-5" aria-hidden="true" />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                  {(t || f.mine || (f.available && !f.mine)) && (
+                    <div className="flex flex-wrap justify-end gap-2 sm:shrink-0 sm:flex-nowrap">
+                      {!f.mine && f.available && !t && (
+                        <button type="button" className={`${principal} flex-1 basis-32 sm:flex-none`} aria-label={`Descargar ${f.name}`} onClick={() => sala.download(f.id)}>
+                          Descargar
+                        </button>
+                      )}
+                      {t && (
+                        <button
+                          type="button"
+                          className={`${secundario} flex-1 basis-32 sm:flex-none`}
+                          aria-label={`Cancelar ${f.name}`}
+                          onClick={() => {
+                            cancelados.current.add(f.id);
+                            sala.cancelDownload(f.id);
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                      {f.mine && (
+                        <button type="button" className={icono} aria-label={`Quitar ${f.name}`} title="Quitar archivo" onClick={() => sala.removeFile(f.id)}>
+                          <Trash2 className="size-5" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </section>
   );

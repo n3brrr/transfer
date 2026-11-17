@@ -51,6 +51,15 @@ const savePicker = () => (window as unknown as { showSaveFilePicker?: SavePicker
 
 export const hasSavePicker = () => typeof savePicker() === 'function';
 
+// Carpeta elegida una sola vez para guardar varios archivos (Descargar todos)
+type DirHandle = { getFileHandle(name: string, options?: { create?: boolean }): Promise<SaveHandle> };
+type DirPicker = (options: { mode: 'readwrite' }) => Promise<DirHandle>;
+const dirPicker = () => (window as unknown as { showDirectoryPicker?: DirPicker }).showDirectoryPicker;
+export const hasFolderPicker = () => typeof dirPicker() === 'function';
+export type Folder = DirHandle;
+// Hay que llamarla directamente desde el clic. Lanza AbortError si el usuario cancela.
+export const pickFolder = (): Promise<Folder> => dirPicker()!.call(window, { mode: 'readwrite' });
+
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ['KB', 'MB', 'GB', 'TB'];
@@ -142,6 +151,25 @@ export async function prepareDestination(item: FileInfo): Promise<Destination> {
     throw new DOMException('Descarga cancelada', 'AbortError');
   }
   return memoryDestination(item);
+}
+
+// Destino dentro de una carpeta ya elegida. Nunca pisa un archivo existente: si el nombre está cogido, añade « (1)», « (2)»…
+export async function folderDestination(dir: Folder, item: FileInfo): Promise<Destination> {
+  const dot = item.name.lastIndexOf('.');
+  const base = dot > 0 ? item.name.slice(0, dot) : item.name;
+  const ext = dot > 0 ? item.name.slice(dot) : '';
+  for (let i = 0; i < 1000; i++) {
+    const name = i === 0 ? item.name : `${base} (${i})${ext}`;
+    const taken = await dir.getFileHandle(name).then(
+      () => true,
+      (err) => {
+        if (err instanceof DOMException && err.name === 'NotFoundError') return false;
+        throw err;
+      },
+    );
+    if (!taken) return pickedDestination(item, await dir.getFileHandle(name, { create: true }));
+  }
+  throw new AvisoError(`No se encontró un nombre libre para «${item.name}»`);
 }
 
 // Escritura directa a disco: no ocupa memoria aunque el archivo sea de varios GB
