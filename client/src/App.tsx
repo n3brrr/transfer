@@ -43,9 +43,14 @@ function Sala({ channel, onSalir }: { channel: RTCDataChannel; onSalir(): void }
     onSalir();
   }
 
+  function renombrar() {
+    const nuevo = prompt('Nombre de este dispositivo (lo verá el otro):', sala.myName);
+    if (nuevo !== null) sala.setMyName(nuevo);
+  }
+
   return (
     <div className="min-h-dvh">
-      <Header pestana={pestana} onPestana={setPestana} connected={sala.connected} onSalir={salir} />
+      <Header pestana={pestana} onPestana={setPestana} connected={sala.connected} name={sala.myName} onRename={renombrar} onSalir={salir} />
       <main className="gutter mx-auto w-full max-w-2xl pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {/* Las dos pestañas siguen montadas para no perder lo que se esté escribiendo */}
         <div id="panel-archivos" role="tabpanel" aria-labelledby="tab-archivos" hidden={pestana !== 'archivos'}>

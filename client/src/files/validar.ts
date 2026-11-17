@@ -28,6 +28,22 @@ export function sanitizeName(raw: unknown): string {
   return name || DEFAULT_NAME;
 }
 
+// Nombre de dispositivo del otro lado: corto, sin caracteres invisibles ni saltos de línea. Vacío si no queda nada.
+const MAX_DEVICE_NAME = 30;
+export function sanitizeDeviceName(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  return Array.from(raw.slice(0, 200))
+    .filter((ch) => !invisible(ch.codePointAt(0)!))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split('')
+    .slice(0, MAX_DEVICE_NAME)
+    .join('')
+    .replace(/[\ud800-\udbff]$/, '')
+    .trim();
+}
+
 // Tipos que un navegador ejecutaría si llegara a abrir el archivo como página
 const ACTIVE_MIME = /^(text\/html|application\/xhtml\+xml|image\/svg\+xml|text\/xml|application\/xml|text\/javascript|application\/javascript|text\/css)$/i;
 

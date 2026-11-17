@@ -311,7 +311,7 @@ export default function Archivos({ sala }: { sala: Sala }) {
                         {f.name}
                       </p>
                       <p className="text-xs text-suave">
-                        {formatSize(f.size)} · {f.mine ? 'Este dispositivo' : 'Otro dispositivo'}
+                        {formatSize(f.size)} · {f.mine ? 'Este dispositivo' : (sala.peerName ?? 'Otro dispositivo')}
                         {!f.available && ' · No disponible'}
                       </p>
                       {!f.mine && isDangerousName(f.name) && (

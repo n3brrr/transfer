@@ -3,6 +3,8 @@ import type { PeerMsg } from '../../../shared/protocol';
 import { randomId } from '../../../shared/token';
 import { replayEarly } from '../net/peer';
 import { TEXT_PART, parseMsg } from './mensajes';
+import { cargarNombre, guardarNombre, nombrePorDefecto } from './nombre';
+import { sanitizeDeviceName } from '../files/validar';
 import {
   AvisoError,
   folderDestination,
@@ -61,6 +63,10 @@ export function useSala(channel: RTCDataChannel) {
   const [connected, setConnected] = useState(channel.readyState === 'open');
   const [transfers, setTransfers] = useState<Record<string, Transfer>>({});
   const [notice, setNotice] = useState<string | null>(null);
+  const [myName, setMyNameState] = useState(cargarNombre);
+  const [peerName, setPeerName] = useState<string | null>(null); // null hasta que el otro dispositivo dice cómo se llama
+  const myNameRef = useRef(myName);
+  myNameRef.current = myName;
 
   const channelRef = useRef(channel);
   const filesRef = useRef(files);
@@ -456,6 +462,9 @@ export function useSala(channel: RTCDataChannel) {
           void pump();
           break;
         }
+        case 'hello':
+          setPeerName(m.name || null);
+          break;
         case 'ping':
           post({ t: 'pong' });
           break;
@@ -546,6 +555,7 @@ export function useSala(channel: RTCDataChannel) {
     replayEarly(channel, onMessage); // lo que el otro dispositivo envió antes de que esta pantalla escuchara
 
     // Canal nuevo (o primera vez): el otro dispositivo necesita ver lo mío
+    post({ t: 'hello', name: myNameRef.current });
     for (const f of filesRef.current) {
       if (f.mine) post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime });
     }
@@ -582,6 +592,13 @@ export function useSala(channel: RTCDataChannel) {
   }, []);
 
   // ---------- Acciones de la pantalla ----------
+
+  const setMyName = useCallback((nuevo: string) => {
+    const nombre = sanitizeDeviceName(nuevo) || nombrePorDefecto();
+    guardarNombre(nombre);
+    setMyNameState(nombre);
+    post({ t: 'hello', name: nombre });
+  }, []);
 
   const addFiles = useCallback((list: File[]) => {
     const added: FileItem[] = list.map((file) => {
@@ -693,6 +710,9 @@ export function useSala(channel: RTCDataChannel) {
     connected,
     transfers,
     notice,
+    myName,
+    peerName,
+    setMyName,
     addFiles,
     removeFile,
     addText,
