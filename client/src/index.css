@@ -1,0 +1,282 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-crema: #faebd4;
+  --color-tinta: #3b2a1a;
+  --color-acento: #c8643c;
+  --color-superficie: #fff8ec;
+  --color-borde: #d9c19a;
+  --color-ok: #5a9a5a;
+  /* Variantes con contraste AA (4,5:1) para texto pequeño y botones con texto blanco */
+  --color-acento-texto: #ab4f2b;
+  --color-suave: #6b5a49; /* texto secundario: tinta al 75 % sobre crema */
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+/* Resaltado de código sobre fondo oscuro */
+.hljs-keyword,
+.hljs-built_in,
+.hljs-literal,
+.hljs-selector-tag {
+  color: #e8956f;
+}
+.hljs-string,
+.hljs-attr,
+.hljs-attribute {
+  color: #a8d08d;
+}
+.hljs-number,
+.hljs-symbol {
+  color: #e6c07b;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #9c8a73;
+  font-style: italic;
+}
+.hljs-title,
+.hljs-section,
+.hljs-name {
+  color: #8ec1d6;
+}
+
+/* Base móvil */
+:root {
+  color-scheme: light;
+}
+
+html {
+  background-color: var(--color-crema); /* también tras el área segura y en el rebote de scroll */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgb(200 100 60 / 0.15);
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--color-crema);
+  color: var(--color-tinta);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
+}
+
+/* Foco visible igual en todo */
+:focus-visible {
+  outline: 3px solid var(--color-acento-texto);
+  outline-offset: 2px;
+}
+
+button,
+select {
+  touch-action: manipulation;
+}
+
+/* 16 px mínimo: con menos, iOS hace zoom al enfocar el campo */
+input,
+textarea,
+select {
+  font-size: 1rem;
+}
+
+/* Objetivos táctiles de 44 px en pantallas táctiles */
+@media (pointer: coarse) {
+  button,
+  select,
+  input:not([type='checkbox'], [type='radio'], [type='file'], [type='range']) {
+    min-height: 44px;
+  }
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+@layer components {
+  /* Pantalla centrada que respeta el área segura y el teclado */
+  .pantalla {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: max(1.5rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+      max(1.5rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  }
+
+  /* Margen lateral de 16 px, o el del área segura si es mayor */
+  .gutter {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .tarjeta {
+    width: 100%;
+    max-width: 24rem;
+    border: 1px solid var(--color-borde);
+    border-radius: 1.25rem;
+    background-color: var(--color-superficie);
+    padding: 1.5rem 1.25rem;
+    box-shadow:
+      0 1px 2px rgb(59 42 26 / 0.06),
+      0 12px 28px -16px rgb(59 42 26 / 0.25);
+  }
+
+  .btn {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 2px solid transparent;
+    border-radius: 0.75rem;
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    line-height: 1.25;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      color 150ms,
+      transform 100ms,
+      opacity 150ms;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+  }
+
+  .btn-primario {
+    background-color: var(--color-acento-texto);
+    color: #fff;
+    min-height: 48px;
+  }
+  .btn-primario:hover:not(:disabled) {
+    background-color: #9a4524;
+  }
+  .btn-primario:active:not(:disabled) {
+    background-color: #8a3d20;
+  }
+
+  .btn-secundario {
+    border-color: var(--color-acento-texto);
+    color: var(--color-acento-texto);
+    background-color: transparent;
+  }
+  .btn-secundario:hover:not(:disabled) {
+    background-color: rgb(171 79 43 / 0.08);
+  }
+  .btn-secundario:active:not(:disabled) {
+    background-color: rgb(171 79 43 / 0.16);
+  }
+
+  /* Tres puntos que laten junto a "Esperando…" */
+  .puntos > span {
+    display: inline-block;
+    animation: punto 1.2s ease-in-out infinite;
+  }
+  .puntos > span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  .puntos > span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+}
+
+@keyframes punto {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* Barra de progreso: relleno terracota con rayas "\" que avanzan */
+.barra {
+  height: 0.875rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background-color: var(--color-borde);
+  box-shadow: inset 0 1px 2px rgb(59 42 26 / 0.2);
+}
+.barra-relleno {
+  height: 100%;
+  min-width: 0.875rem; /* al 0 % se ve la punta */
+  border-radius: inherit;
+  background-color: var(--color-acento);
+  background-image: linear-gradient(
+    45deg,
+    rgb(250 235 212 / 0.4) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgb(250 235 212 / 0.4) 50%,
+    rgb(250 235 212 / 0.4) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 1.25rem 1.25rem;
+  animation: barra 0.8s linear infinite;
+  transition: width 300ms ease-out;
+}
+.barra-pausada .barra-relleno {
+  animation-play-state: paused;
+  filter: grayscale(0.6);
+}
+@keyframes barra {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 1.25rem 0;
+  }
+}
+
+/* Las filas nuevas aparecen suavemente */
+.entra {
+  animation: entra 220ms ease-out;
+}
+@keyframes entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* "Completado" aparece con un pequeño rebote */
+.hecho {
+  animation: hecho 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes hecho {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
