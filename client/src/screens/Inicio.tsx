@@ -6,6 +6,8 @@ const ERRORES: Record<string, string> = {
   expired: 'El código ha caducado',
   full: 'La sala ya está completa',
   rate_limited: 'Demasiados intentos, espera un minuto',
+  rejected: 'El otro dispositivo rechazó la conexión',
+  no_answer: 'El otro dispositivo no respondió a tiempo',
   sin_conexion: 'No se puede conectar con el servidor',
 };
 
@@ -18,6 +20,8 @@ type Accion = 'crear' | 'unirse';
 
 type Props = {
   aviso: string | null;
+  esperando: boolean; // ya pedí unirme y espero a que el otro dispositivo me acepte
+  onCancelarEspera(): void;
   // Devuelven un código de error, o null si todo ha ido bien
   onCrear(): Promise<string | null>;
   onUnirse(token: string): Promise<string | null>;
@@ -99,7 +103,7 @@ function Logo() {
   );
 }
 
-export default function Inicio({ aviso, onCrear, onUnirse }: Props) {
+export default function Inicio({ aviso, esperando, onCancelarEspera, onCrear, onUnirse }: Props) {
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState<{ accion: Accion; texto: string } | null>(null);
   const [ocupado, setOcupado] = useState<Accion | null>(null);
@@ -113,7 +117,7 @@ export default function Inicio({ aviso, onCrear, onUnirse }: Props) {
     setError(null);
     try {
       const fallo = await tarea();
-      if (fallo) {
+      if (fallo && fallo !== 'cancelado') {
         const texto = (accion === 'crear' && ERRORES_CREAR[fallo]) || ERRORES[fallo] || 'Algo ha fallado';
         setError({ accion, texto });
       }
@@ -176,8 +180,16 @@ export default function Inicio({ aviso, onCrear, onUnirse }: Props) {
             }}
           />
           <button className="btn btn-secundario mt-1 min-h-12 w-full" disabled={!listo || ocupado !== null}>
-            {ocupado === 'unirse' ? 'Uniendo…' : 'Unirme'}
+            {ocupado === 'unirse' ? (esperando ? 'Esperando…' : 'Uniendo…') : 'Unirme'}
           </button>
+          {esperando && (
+            <div role="status" className="flex flex-col gap-2 rounded-xl bg-superficie p-3 text-center text-sm">
+              <p>Esperando a que el otro dispositivo te acepte…</p>
+              <button type="button" className="btn btn-secundario min-h-11 w-full" onClick={onCancelarEspera}>
+                Cancelar
+              </button>
+            </div>
+          )}
           <div aria-live="polite">
             {errorUnirse && (
               <p id="error-codigo" className="text-sm text-acento-texto">

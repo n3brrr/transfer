@@ -24,7 +24,7 @@ El servidor solo ve el saludo WebRTC (SDP, candidatos ICE, huellas DTLS); nunca 
 | Media | `X-Forwarded-For` se leía siempre y el primer valor lo puede falsear el cliente en acceso directo: saltaba el límite por IP | Corregido | `server/index.ts` (`ipOf`, `TRUST_PROXY`), `docker-compose.yml` |
 | Media | El WebSocket aceptaba cualquier `Origin` cuyo host coincidiera con `Host` (permite DNS rebinding si se accede en directo) | Corregido | `server/index.ts` (`originAllowed`), `ALLOWED_ORIGINS` fijado en compose |
 | Media | El receptor acumulaba en memoria todo lo que el emisor mandara sin respetar la ventana de 8 MB | Corregido | `files/chunker.ts` (`MAX_PENDING`) |
-| Media | Quien vea o consiga el código (5 min de vida) y lo use antes que el otro dispositivo se empareja con el creador sin que este lo confirme | Pendiente | ver "Mejoras futuras" |
+| Media | Quien vea o consiga el código (5 min de vida) y lo use antes que el otro dispositivo se empareja con el creador sin que este lo confirme | Corregido: el creador acepta o rechaza cada solicitud (60 s) | `server/rooms.ts` (`pending`, `accept`, `reject`), `App.tsx`, `screens/SalaCreada.tsx` |
 | Baja | `mime` del otro dispositivo usado en `Blob` (tipos activos como `text/html` o `image/svg+xml`) | Corregido | `files/validar.ts` (`sanitizeMime`) |
 | Baja | `format` de texto desconocido llegaba a `hljs.getLanguage` y a la interfaz | Corregido | `files/validar.ts` (`sanitizeFormat`) |
 | Baja | Extensiones ejecutables sin aviso al descargar | Corregido (aviso, no bloquea) | `screens/Archivos.tsx`, `files/validar.ts` (`isDangerousName`) |
@@ -34,14 +34,18 @@ El servidor solo ve el saludo WebRTC (SDP, candidatos ICE, huellas DTLS); nunca 
 | Baja | `signal` con `data` nulo o no objeto lanzaba error en el cliente | Corregido | `net/peer.ts`, `net/signaling.ts` |
 | Baja | La app podía salir a internet desde su contenedor y los registros de Docker crecían sin límite | Corregido | `docker-compose.yml` (red `interna`, `logging`) |
 | Baja | La red de casa puede ver el 443; su filtrado depende del firewall de Windows y del router. Docker Desktop publica el puerto por su cuenta y no se ha comprobado que la regla "Privada" lo cubra | Pendiente de comprobar | `docs/arranque.md` (advertencia añadida) |
-| Media | `xcaddy build --with github.com/caddy-dns/duckdns` sin versión: se compila lo último de un módulo de terceros que recibe el token de DuckDNS. Imágenes `node:24-slim`, `caddy:2` y `caddy:2-builder` por etiqueta, no por resumen | Pendiente | `docker/Dockerfile.caddy`, `docker/Dockerfile` |
-| Baja | La imagen de producción instala también `react`, `react-dom` y `highlight.js` (solo hacen falta en el build del cliente) | Pendiente | `package.json` (moverlos a `devDependencies` exige regenerar el lockfile) |
+| Media | `xcaddy build --with github.com/caddy-dns/duckdns` sin versión: se compila lo último de un módulo de terceros que recibe el token de DuckDNS. Imágenes `node:24-slim`, `caddy:2` y `caddy:2-builder` por etiqueta, no por resumen | Corregido (versión y resúmenes fijados; ambas imágenes compilan) | `docker/Dockerfile.caddy`, `docker/Dockerfile` |
+| Baja | La imagen de producción instalaba también `react`, `react-dom` y `highlight.js` | Corregido | `package.json` |
 | Baja | Un par hostil puede inundar el canal de mensajes y congelar la pestaña del otro | Aceptado | — |
 | Baja | Con Docker Desktop, Caddy puede ver todas las peticiones de la LAN con la misma IP (deducido del código, no comprobado): los límites por IP actúan como globales | Aceptado | `server/limiter.ts` |
 | Baja | Un dispositivo de la LAN que falle 20 uniones/min bloquea a esa IP; 200/min en total bloquea las uniones de todos durante un minuto | Aceptado | `server/limiter.ts` |
 | Baja | Los códigos fallidos distinguen `not_found`/`full`/`expired`: confirma si un código existe | Aceptado | `server/rooms.ts` |
 | Baja | `sessionStorage` guarda el código de sala y el `deviceId` (quien lo robe puede volver a una sala emparejada) | Aceptado | `net/signaling.ts` |
 | Baja | `pnpm audit` | Sin vulnerabilidades conocidas | `pnpm-lock.yaml` |
+| Baja | Modo rápido (`docker-compose.local.yml`): la página y la señalización van por HTTP dentro de la LAN, así que quien esté en la red puede leer el código y el saludo WebRTC | Aceptado: es solo LAN, el creador acepta a cada dispositivo, y los datos van cifrados por DTLS aunque la página sea HTTP. Para HTTPS, usar el modo con DuckDNS | `docker-compose.local.yml`, `docs/arranque.md` |
+| Baja | Miniatura del otro dispositivo (`thumb`): el navegador decodifica un JPEG que manda el par | Aceptado; solo se admite una data URL `image/jpeg` con base64 estricto y 12.000 caracteres como máximo | `files/validar.ts` (`sanitizeThumb`), `files/miniatura.ts` |
+| Baja | Nombre de dispositivo (`hello`) del otro lado: texto libre | Corregido: se limpia (sin invisibles ni saltos, 30 caracteres) y React lo pinta como texto | `files/validar.ts` (`sanitizeDeviceName`) |
+| Baja | El enlace del QR lleva el código en `#fragmento` | Aceptado: el navegador no lo envía al servidor ni en `Referer`, se borra de la barra al abrirlo y el creador debe aceptar igualmente | `App.tsx`, `files/qr.ts` |
 
 ## Qué se comprobó y está bien (leyendo el código)
 
@@ -74,9 +78,9 @@ El servidor solo ve el saludo WebRTC (SDP, candidatos ICE, huellas DTLS); nunca 
 
 ## Mejoras futuras
 
-1. **Confirmar el emparejamiento en el creador** ("Un dispositivo quiere unirse. ¿Aceptar?"). Es la mitigación que falta contra quien vea o adivine el código; hoy el creador no sabe quién ha entrado.
-2. **Fijar versiones**: `caddy-dns/duckdns` a una versión concreta (comprobando que compila con el Caddy que baje `caddy:2-builder`) e imágenes base por resumen (`@sha256:`). Revisar de vez en cuando `pnpm audit`.
-3. Mover `react`, `react-dom` y `highlight.js` a `devDependencies` y regenerar el lockfile, para que la imagen final solo lleve `ws`.
+1. ~~Confirmar el emparejamiento en el creador~~ (hecho). Queda como mejora opcional un código de verificación entre ambos dispositivos, que además protegería frente a un servidor de señalización comprometido.
+2. ~~Fijar versiones~~ (hecho: imágenes por `@sha256:` y `caddy-dns/duckdns@v0.5.0`). Revisar de vez en cuando `pnpm audit` y actualizar los resúmenes.
+3. ~~Mover las dependencias del cliente a `devDependencies`~~ (hecho: la imagen final solo lleva `ws`).
 4. Comprobar desde otro dispositivo de la LAN y desde fuera (datos móviles) qué puertos responden; reservar la regla de firewall solo para el perfil Privado y la subred local (`-RemoteAddress LocalSubnet`).
-5. Limitar por IP las salas que se pueden crear por minuto y registrar (sin datos personales) el contador de bloqueos.
+5. ~~Limitar por IP las salas creadas por minuto~~ (hecho: 10/min por IP; se anota el total de bloqueos por minuto, sin IPs).
 6. En Fase 2 (túnel y TURN): revisar de nuevo todo este documento; ya no valdría "solo LAN". Habría que añadir autenticación real y un TURN con credenciales temporales.

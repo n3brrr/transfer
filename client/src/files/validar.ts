@@ -1,4 +1,5 @@
 import { FORMATO_IDS } from './formatos';
+import { MAX_MINIATURA } from './miniatura';
 
 // Todo lo que llega del otro dispositivo es entrada no fiable: estas funciones lo limpian antes de usarlo.
 
@@ -26,6 +27,28 @@ export function sanitizeName(raw: unknown): string {
     name = name.slice(0, MAX_NAME - ext.length).replace(/[\ud800-\udbff]$/, '') + ext;
   }
   return name || DEFAULT_NAME;
+}
+
+// Nombre de dispositivo del otro lado: corto, sin caracteres invisibles ni saltos de línea. Vacío si no queda nada.
+const MAX_DEVICE_NAME = 30;
+export function sanitizeDeviceName(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  return Array.from(raw.slice(0, 200))
+    .filter((ch) => !invisible(ch.codePointAt(0)!))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split('')
+    .slice(0, MAX_DEVICE_NAME)
+    .join('')
+    .replace(/[\ud800-\udbff]$/, '')
+    .trim();
+}
+
+// Miniatura que manda el otro dispositivo: solo se admite una data URL JPEG con base64 estricto y tamaño acotado
+const MINIATURA = /^data:image\/jpeg;base64,[A-Za-z0-9+/]{16,}={0,2}$/;
+export function sanitizeThumb(raw: unknown): string | undefined {
+  return typeof raw === 'string' && raw.length <= MAX_MINIATURA && MINIATURA.test(raw) ? raw : undefined;
 }
 
 // Tipos que un navegador ejecutaría si llegara a abrir el archivo como página

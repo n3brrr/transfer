@@ -1,9 +1,13 @@
+import { Pencil } from 'lucide-react';
+
 export type Pestana = 'archivos' | 'texto';
 
 type Props = {
   pestana: Pestana;
   onPestana(p: Pestana): void;
   connected: boolean;
+  name: string; // nombre de este dispositivo
+  onRename(): void;
   onSalir(): void;
 };
 
@@ -12,7 +16,7 @@ const PESTANAS: { id: Pestana; texto: string }[] = [
   { id: 'texto', texto: 'Texto' },
 ];
 
-export default function Header({ pestana, onPestana, connected, onSalir }: Props) {
+export default function Header({ pestana, onPestana, connected, name, onRename, onSalir }: Props) {
   // Flechas izquierda/derecha cambian de pestaña, como en cualquier tablist
   function teclas(e: React.KeyboardEvent) {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -59,6 +63,16 @@ export default function Header({ pestana, onPestana, connected, onSalir }: Props
             />
             {connected ? 'Conectado' : 'Reconectando…'}
           </span>
+          <button
+            type="button"
+            className="inline-flex min-h-11 max-w-[9rem] items-center gap-1.5 truncate rounded-lg px-2 text-sm text-suave hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta"
+            aria-label={`Este dispositivo se llama ${name}. Cambiar nombre`}
+            title="Cambiar el nombre de este dispositivo"
+            onClick={onRename}
+          >
+            <Pencil className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{name}</span>
+          </button>
           <button type="button" className="btn btn-secundario px-4 text-sm" onClick={onSalir}>
             Salir
           </button>

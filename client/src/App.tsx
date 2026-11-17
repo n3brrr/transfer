@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { FromServer, PeerMsg } from '../../shared/protocol';
 import { isValidToken, sanitizeToken } from '../../shared/token';
 import { connectPeer } from './net/peer';
 import { clearToken, connectSignaling, getDeviceId, loadToken, saveToken, type Signaling } from './net/signaling';
 import { useSala } from './state/sala';
 import Header, { type Pestana } from './ui/Header';
+import { useAvisoTitulo } from './ui/useAvisoTitulo';
 import Archivos from './screens/Archivos';
 import Inicio from './screens/Inicio';
 import SalaCreada, { Conectando } from './screens/SalaCreada';
-import Texto from './screens/Texto';
+// La pestaña Texto lleva highlight.js: se descarga aparte para que Inicio cargue más rápido
+const Texto = lazy(() => import('./screens/Texto'));
 
 type Pantalla = 'inicio' | 'creada' | 'conectando' | 'sala';
 type Estado = 'conectando' | 'reconectando' | 'fallo';
@@ -27,23 +29,39 @@ const MENSAJES: Record<string, string> = {
   expired: SALA_PERDIDA,
   full: 'La sala ya está completa',
   rate_limited: 'Demasiados intentos, espera un minuto',
+  rejected: 'El otro dispositivo rechazó la conexión',
+  no_answer: 'El otro dispositivo no respondió a tiempo',
   sin_conexion: SIN_SERVIDOR,
 };
 
 function Sala({ channel, onSalir }: { channel: RTCDataChannel; onSalir(): void }) {
   const sala = useSala(channel);
   const [pestana, setPestana] = useState<Pestana>('archivos');
+  useAvisoTitulo(sala.files.filter((f) => !f.mine).length + sala.texts.filter((t) => !t.mine).length);
+
+  // Salir cierra la sala para los dos: si hay algo transfiriéndose, se pide confirmación
+  function salir() {
+    if (Object.keys(sala.transfers).length > 0 && !confirm('Hay transferencias en curso y se cancelarán. ¿Salir de la sala?')) return;
+    onSalir();
+  }
+
+  function renombrar() {
+    const nuevo = prompt('Nombre de este dispositivo (lo verá el otro):', sala.myName);
+    if (nuevo !== null) sala.setMyName(nuevo);
+  }
 
   return (
     <div className="min-h-dvh">
-      <Header pestana={pestana} onPestana={setPestana} connected={sala.connected} onSalir={onSalir} />
+      <Header pestana={pestana} onPestana={setPestana} connected={sala.connected} name={sala.myName} onRename={renombrar} onSalir={salir} />
       <main className="gutter mx-auto w-full max-w-2xl pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {/* Las dos pestañas siguen montadas para no perder lo que se esté escribiendo */}
         <div id="panel-archivos" role="tabpanel" aria-labelledby="tab-archivos" hidden={pestana !== 'archivos'}>
           <Archivos sala={sala} />
         </div>
         <div id="panel-texto" role="tabpanel" aria-labelledby="tab-texto" hidden={pestana !== 'texto'}>
-          <Texto sala={sala} />
+          <Suspense fallback={null}>
+            <Texto sala={sala} />
+          </Suspense>
         </div>
       </main>
     </div>
@@ -58,6 +76,8 @@ export default function App() {
   const [token, setToken] = useState('');
   const [channel, setChannel] = useState<RTCDataChannel | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [esperando, setEsperando] = useState(false); // me he unido y espero a que el creador me acepte
+  const [solicitud, setSolicitud] = useState(false); // alguien pide unirse a mi sala
 
   // Copias en refs: las conexiones guardan funciones antiguas y necesitan ver el estado actual
   const pantallaRef = useRef<Pantalla>(guardado ? 'conectando' : 'inicio');
@@ -74,6 +94,7 @@ export default function App() {
   const pausa = useRef<number | undefined>(undefined);
   const generacion = useRef(0); // cambia al cerrar o reintentar: los bucles antiguos se detienen
   const arrancado = useRef(false);
+  const cancelando = useRef(false); // el usuario retiró su solicitud: el cierre de la conexión no es un fallo
 
   function ir(p: Pantalla) {
     pantallaRef.current = p;
@@ -112,6 +133,7 @@ export default function App() {
     cola.current = [];
     setChannel(null);
     setToken('');
+    setSolicitud(false);
     setAviso(mensaje);
     ir('inicio');
   }
@@ -209,14 +231,49 @@ export default function App() {
   // Mensajes del servidor una vez la conexión está en uso
   function manejar(m: FromServer, s: Signaling) {
     if (m.t === 'peer-joined') {
-      // El otro se ha unido (o ha vuelto): yo respondo, él ofrece
-      emparejar(s, false);
+      setSolicitud(false);
+      if (m.direct && chRef.current?.readyState === 'open') {
+        // El otro solo recuperó la conexión con el servidor y la directa sigue viva: no se reempareja
+        clearTimeout(espera.current);
+        espera.current = undefined;
+      } else {
+        // Si él cree que el canal sigue vivo y el mío no, le pido que ofrezca de nuevo
+        if (m.direct) s.send({ t: 'signal', data: { repair: true } });
+        // El otro se ha unido (o ha vuelto): yo respondo, él ofrece
+        emparejar(s, false);
+      }
     } else if (m.t === 'peer-left') {
-      if (pantallaRef.current === 'sala') perdido();
+      // Con el canal directo abierto no hace falta esperar: si el otro se fue de verdad, el latido lo cortará
+      if (pantallaRef.current === 'sala' && chRef.current?.readyState !== 'open') perdido();
+    } else if (m.t === 'join-request') {
+      setSolicitud(true);
+    } else if (m.t === 'join-cancelled') {
+      setSolicitud(false);
     } else if (m.t === 'signal') {
+      const datos = m.data as { repair?: unknown } | null;
+      if (datos && typeof datos === 'object' && datos.repair === true) {
+        // El otro perdió el canal directo que yo daba por abierto: ofrezco una conexión nueva
+        if (!peerActivo.current) emparejar(s, true);
+        return;
+      }
       // Si connectPeer aún no escucha, la señal se guarda para entregársela al empezar
       if (!peerActivo.current && chRef.current?.readyState !== 'open' && cola.current.length < 50) cola.current.push(m);
     }
+  }
+
+  // El creador responde a quien pide unirse
+  function responder(acepta: boolean) {
+    sig.current?.send({ t: acepta ? 'accept' : 'reject' });
+    setSolicitud(false);
+  }
+
+  // El que pidió unirse se arrepiente mientras espera
+  function cancelarUnion() {
+    const p = pendiente.current;
+    if (!p) return;
+    cancelando.current = true;
+    p.send({ t: 'leave' });
+    p.close();
   }
 
   // `s` pasa a ser la conexión con el servidor
@@ -281,6 +338,7 @@ export default function App() {
       const s = connectSignaling();
       pendiente.current = s;
       cola.current = [];
+      cancelando.current = false;
       let respondido = false;
       const fin = (resultado: string | null) => {
         if (respondido) return;
@@ -294,7 +352,7 @@ export default function App() {
         s.close();
       }, RESPUESTA_MS);
       s.onClose(() => {
-        if (!respondido) fin('sin_conexion');
+        if (!respondido) fin(cancelando.current ? 'cancelado' : 'sin_conexion');
         else if (sig.current === s) caida();
       });
       s.on((m) => {
@@ -303,6 +361,10 @@ export default function App() {
         } else if (m.t === 'error') {
           fin(m.code);
           s.close();
+        } else if (m.t === 'pending') {
+          // El creador tiene que aceptar: puede tardar más que RESPUESTA_MS (el servidor corta a los ~60 s)
+          clearTimeout(tRespuesta);
+          setEsperando(true);
         } else if (m.t === 'signal') {
           cola.current.push(m);
         } else if (m.t === esperado) {
@@ -314,6 +376,7 @@ export default function App() {
       inicio(s);
     }).finally(() => {
       enCurso.current = null;
+      setEsperando(false);
     });
     enCurso.current = promesa;
     return promesa;
@@ -340,10 +403,17 @@ export default function App() {
     const t = sanitizeToken(texto);
     if (!isValidToken(t)) return Promise.resolve('not_found'); // ni se llega a enviar al servidor
     return conectar(
-      (s) => s.send({ t: 'join', token: t, deviceId: getDeviceId() }),
+      (s) => s.send({ t: 'join', token: t, deviceId: getDeviceId(), direct: chRef.current?.readyState === 'open' }),
       'joined',
       (_m, s) => {
         tokenRef.current = t;
+        if (chRef.current?.readyState === 'open') {
+          // Solo se recuperó la conexión con el servidor: el canal directo sigue vivo y se conserva
+          clearTimeout(espera.current);
+          espera.current = undefined;
+          saveToken(t);
+          return;
+        }
         // Quien se une ofrece la conexión
         emparejar(s, true);
       },
@@ -364,11 +434,27 @@ export default function App() {
   useEffect(() => {
     if (arrancado.current) return; // StrictMode ejecuta los efectos dos veces
     arrancado.current = true;
+    // Enlace del QR (/#CÓDIGO): se limpia de la barra y, si no hay sesión que recuperar, se une a esa sala
+    const codigo = sanitizeToken(location.hash.slice(1));
+    const delQr = location.hash !== '' && isValidToken(codigo);
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     if (tokenRef.current) void recuperar('reconectando');
+    else if (delQr) void entrar(codigo).then((f) => f && f !== 'cancelado' && cerrar(MENSAJES[f] ?? SIN_SERVIDOR));
   }, []);
 
   if (pantalla === 'sala' && channel) return <Sala channel={channel} onSalir={salir} />;
-  if (pantalla === 'creada') return <SalaCreada token={token} onCancelar={() => cerrar(null)} onCrearOtro={crearOtro} />;
+  if (pantalla === 'creada') {
+    return (
+      <SalaCreada
+        token={token}
+        solicitud={solicitud}
+        onAceptar={() => responder(true)}
+        onRechazar={() => responder(false)}
+        onCancelar={() => cerrar(null)}
+        onCrearOtro={crearOtro}
+      />
+    );
+  }
   if (pantalla === 'conectando') return <Conectando estado={estado} onReintentar={reintentar} onCancelar={() => cerrar(null)} />;
-  return <Inicio aviso={aviso} onCrear={crear} onUnirse={entrar} />;
+  return <Inicio aviso={aviso} esperando={esperando} onCancelarEspera={cancelarUnion} onCrear={crear} onUnirse={entrar} />;
 }

@@ -1,5 +1,7 @@
-FROM caddy:2-builder AS builder
-RUN xcaddy build --with github.com/caddy-dns/duckdns
+# Imágenes fijadas por resumen y módulo por versión: un cambio aguas arriba no entra sin revisarlo.
+# Para actualizar: docker buildx imagetools inspect caddy:2 (y caddy:2-builder) y git ls-remote --tags https://github.com/caddy-dns/duckdns
+FROM caddy:2-builder@sha256:aef223d1f943bc12a29a9e0a0a73983aa19a36672daede7507da4201a6b1016a AS builder
+RUN xcaddy build --with github.com/caddy-dns/duckdns@v0.5.0
 
-FROM caddy:2
+FROM caddy:2@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy

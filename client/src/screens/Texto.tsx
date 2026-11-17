@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import hljs from 'highlight.js/lib/core';
 import { Check, ClipboardPaste, Copy, Eraser, Trash2 } from 'lucide-react';
-import { FORMATOS, detectar, nombreFormato } from '../files/formatos';
+import { FORMATOS, nombreFormato } from '../files/formatos';
+import { detectar, resaltar } from '../files/resaltado';
 import type { Sala, TextItem } from '../state/sala';
+import { formatSize } from '../files/transfer';
+import { copiarTexto } from '../ui/portapapeles';
 
 const MAX_BYTES = 1024 * 1024;
 const AVISO_BYTES = 800 * 1024; // a partir de aquí se avisa de que se acerca el límite
@@ -16,69 +18,30 @@ const secundario = `${boton} border-2 border-acento text-tinta`;
 const herramienta = `${boton} inline-flex items-center gap-1.5 border-2 border-borde text-tinta transition hover:border-acento hover:bg-superficie active:scale-95`;
 const campo = `w-full rounded-lg border-2 border-borde bg-superficie px-3 text-base text-tinta ${foco}`;
 
-function tamano(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toLocaleString('es', { maximumFractionDigits: 2 })} MB`;
-}
-
-// Devuelve false si no se pudo copiar de ninguna forma
-async function copiar(texto: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(texto);
-    return true;
-  } catch {
-    // Sin Clipboard API (página sin HTTPS): método antiguo
-    const previo = document.activeElement as HTMLElement | null;
-    const area = document.createElement('textarea');
-    area.value = texto;
-    area.setAttribute('readonly', '');
-    area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
-    document.body.appendChild(area);
-    area.select();
-    area.setSelectionRange(0, texto.length);
-    let ok = false;
-    try {
-      ok = document.execCommand('copy');
-    } catch {
-      ok = false;
-    }
-    area.remove();
-    previo?.focus();
-    return ok;
-  }
-}
-
 type FragmentoProps = {
   item: TextItem;
+  origen: string; // de qué dispositivo viene (nombre del otro, o «Este dispositivo»)
   editando: boolean;
   onEditar(): void;
   onQuitar(): void;
 };
 
-function Fragmento({ item, editando, onEditar, onQuitar }: FragmentoProps) {
+function Fragmento({ item, origen, editando, onEditar, onQuitar }: FragmentoProps) {
   const [copia, setCopia] = useState<'ok' | 'error' | null>(null);
   const [abierto, setAbierto] = useState(false);
   const temporizador = useRef(0);
   useEffect(() => () => clearTimeout(temporizador.current), []);
 
   const esTexto = item.format === 'text';
-  const html = useMemo(() => {
-    if (esTexto || item.content.length > MAX_RESALTADO || !hljs.getLanguage(item.format)) return null;
-    try {
-      // highlight.js escapa el HTML del contenido: es la única salida que se inyecta
-      return hljs.highlight(item.content, { language: item.format, ignoreIllegals: true }).value;
-    } catch {
-      return null;
-    }
-  }, [item.content, item.format, esTexto]);
+  // highlight.js escapa el HTML del contenido: es la única salida que se inyecta
+  const html = useMemo(() => resaltar(item.content, item.format, MAX_RESALTADO), [item.content, item.format]);
   const lineas = useMemo(() => item.content.split('\n').length, [item.content]);
   const largo = lineas > LINEAS_PLEGADO || item.content.length > CARACTERES_PLEGADO;
   const plegado = largo && !abierto;
   const nombre = nombreFormato(item.format);
 
   async function alCopiar() {
-    const ok = await copiar(item.content);
+    const ok = await copiarTexto(item.content);
     setCopia(ok ? 'ok' : 'error');
     clearTimeout(temporizador.current);
     temporizador.current = window.setTimeout(() => setCopia(null), 2000);
@@ -91,7 +54,7 @@ function Fragmento({ item, editando, onEditar, onQuitar }: FragmentoProps) {
   return (
     <li className={`entra min-w-0 rounded-xl bg-superficie p-3 ${editando ? 'ring-2 ring-acento' : ''}`}>
       <p className="text-sm opacity-75">
-        {nombre} · {item.mine ? 'Este dispositivo' : 'Otro dispositivo'}
+        {nombre} · {origen}
         {editando && ' · Editando'}
       </p>
       <div className="relative my-2">
@@ -266,6 +229,13 @@ export default function Texto({ sala }: { sala: Sala }) {
     }
   }
 
+  // Quita todos los fragmentos de este dispositivo (los del otro no se tocan)
+  function vaciar() {
+    if (!confirm('¿Quitar todos tus textos de la lista? El otro dispositivo también dejará de verlos.')) return;
+    if (editando && sala.texts.some((t) => t.id === editando && t.mine)) restaurar();
+    for (const t of sala.texts) if (t.mine) sala.removeText(t.id);
+  }
+
   function anadir() {
     if (vacio || demasiado) return;
     const f = manual ? formato : detectar(contenido); // por si se pulsa antes de que acabe la espera
@@ -319,7 +289,7 @@ export default function Texto({ sala }: { sala: Sala }) {
           </p>
           {!vacio && (
             <p className={demasiado || cerca ? 'font-medium' : 'opacity-75'}>
-              {tamano(bytes)} de 1 MB
+              {formatSize(bytes)} de 1 MB
             </p>
           )}
         </div>
@@ -359,11 +329,21 @@ export default function Texto({ sala }: { sala: Sala }) {
       {sala.texts.length === 0 ? (
         <p className="text-center text-sm opacity-75">Aún no hay textos. Lo que añadas aquí lo verá el otro dispositivo.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {sala.texts.map((t) => (
-            <Fragmento key={t.id} item={t} editando={editando === t.id} onEditar={() => editar(t)} onQuitar={() => quitar(t.id)} />
-          ))}
-        </ul>
+        <>
+          {sala.texts.some((t) => t.mine) && (
+            <div className="mb-3 flex justify-end">
+              <button type="button" className={herramienta} onClick={vaciar}>
+                <Trash2 className="size-4" aria-hidden="true" />
+                Vaciar mis textos
+              </button>
+            </div>
+          )}
+          <ul className="flex flex-col gap-3">
+            {sala.texts.map((t) => (
+              <Fragmento key={t.id} item={t} origen={t.mine ? 'Este dispositivo' : (sala.peerName ?? 'Otro dispositivo')} editando={editando === t.id} onEditar={() => editar(t)} onQuitar={() => quitar(t.id)} />
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );

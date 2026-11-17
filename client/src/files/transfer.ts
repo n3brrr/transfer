@@ -51,6 +51,15 @@ const savePicker = () => (window as unknown as { showSaveFilePicker?: SavePicker
 
 export const hasSavePicker = () => typeof savePicker() === 'function';
 
+// Carpeta elegida una sola vez para guardar varios archivos (Descargar todos)
+type DirHandle = { getFileHandle(name: string, options?: { create?: boolean }): Promise<SaveHandle> };
+type DirPicker = (options: { mode: 'readwrite' }) => Promise<DirHandle>;
+const dirPicker = () => (window as unknown as { showDirectoryPicker?: DirPicker }).showDirectoryPicker;
+export const hasFolderPicker = () => typeof dirPicker() === 'function';
+export type Folder = DirHandle;
+// Hay que llamarla directamente desde el clic. Lanza AbortError si el usuario cancela.
+export const pickFolder = (): Promise<Folder> => dirPicker()!.call(window, { mode: 'readwrite' });
+
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ['KB', 'MB', 'GB', 'TB'];
@@ -61,6 +70,15 @@ export function formatSize(bytes: number): string {
     i++;
   }
   return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[i]}`;
+}
+
+// Tiempo restante en pocas palabras: «12 s», «3 min», «1 h 05 min»
+export function formatEta(seconds: number): string {
+  const s = Math.max(1, Math.round(seconds));
+  if (s < 60) return `${s} s`;
+  const min = Math.round(s / 60);
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min`;
 }
 
 export function isMobile(): boolean {
@@ -109,6 +127,14 @@ export async function sendFile(ch: RTCDataChannel, id: string, file: Blob, s: Se
   return true;
 }
 
+// Aviso previo (antes de pulsar Descargar) para archivos grandes en navegadores que guardan en memoria; null si no hace falta
+export function memoryNotice(size: number): string | null {
+  if (hasSavePicker()) return null;
+  if (size > MEMORY_MAX) return `Pesa más de ${formatSize(MEMORY_MAX)}: este navegador no puede guardarlo. Descárgalo desde Chrome o Edge en un ordenador.`;
+  if (size > (isMobile() ? MEMORY_WARNING_MOBILE : MEMORY_WARNING_PC)) return 'Este navegador lo guarda en memoria antes de descargarlo y puede quedarse sin ella.';
+  return null;
+}
+
 // Prepara dónde guardar el archivo. Hay que llamarla directamente desde el clic (sin esperas antes):
 // showSaveFilePicker exige un gesto del usuario. Lanza AbortError si el usuario cancela, o AvisoError.
 export async function prepareDestination(item: FileInfo): Promise<Destination> {
@@ -125,6 +151,25 @@ export async function prepareDestination(item: FileInfo): Promise<Destination> {
     throw new DOMException('Descarga cancelada', 'AbortError');
   }
   return memoryDestination(item);
+}
+
+// Destino dentro de una carpeta ya elegida. Nunca pisa un archivo existente: si el nombre está cogido, añade « (1)», « (2)»…
+export async function folderDestination(dir: Folder, item: FileInfo): Promise<Destination> {
+  const dot = item.name.lastIndexOf('.');
+  const base = dot > 0 ? item.name.slice(0, dot) : item.name;
+  const ext = dot > 0 ? item.name.slice(dot) : '';
+  for (let i = 0; i < 1000; i++) {
+    const name = i === 0 ? item.name : `${base} (${i})${ext}`;
+    const taken = await dir.getFileHandle(name).then(
+      () => true,
+      (err) => {
+        if (err instanceof DOMException && err.name === 'NotFoundError') return false;
+        throw err;
+      },
+    );
+    if (!taken) return pickedDestination(item, await dir.getFileHandle(name, { create: true }));
+  }
+  throw new AvisoError(`No se encontró un nombre libre para «${item.name}»`);
 }
 
 // Escritura directa a disco: no ocupa memoria aunque el archivo sea de varios GB

@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PeerMsg } from '../../../shared/protocol';
 import { randomId } from '../../../shared/token';
-import { sanitizeFormat, sanitizeMime, sanitizeName } from '../files/validar';
+import { crearMiniatura } from '../files/miniatura';
+import { replayEarly } from '../net/peer';
+import { TEXT_PART, parseMsg } from './mensajes';
+import { cargarNombre, guardarNombre, nombrePorDefecto } from './nombre';
+import { sanitizeDeviceName } from '../files/validar';
 import {
   AvisoError,
+  folderDestination,
+  hasFolderPicker,
   hasSavePicker,
   keepAwake,
+  pickFolder,
   newSend,
   prepareDestination,
   sendFile,
@@ -15,21 +22,19 @@ import {
   type Send,
 } from '../files/transfer';
 
-export type FileItem = { id: string; name: string; size: number; mime: string; mine: boolean; available: boolean };
+export type FileItem = { id: string; name: string; size: number; mime: string; mine: boolean; available: boolean; thumb?: string };
 export type TextItem = { id: string; format: string; content: string; mine: boolean };
 // Un archivo que está subiendo o bajando (clave = id del archivo). `paused`: descarga cortada que continuará si el otro vuelve.
-export type Transfer = { direction: 'in' | 'out'; fraction: number; state: 'queued' | 'active' | 'paused' };
+// `rate`: fracción del archivo que avanza por segundo (media suavizada); sirve para la velocidad y el tiempo restante.
+export type Transfer = { direction: 'in' | 'out'; fraction: number; state: 'queued' | 'active' | 'paused'; rate?: number };
 export type Sala = ReturnType<typeof useSala>;
 
-const TEXT_PART = 60_000; // caracteres por mensaje; un mensaje WebRTC admite ~256 KB
-// Límites a lo que puede mandar el otro dispositivo (entrada no fiable)
-const MAX_PARTS = 20; // un texto de 1 MB son 18 partes
-const MAX_FILE_SIZE = 2 ** 40; // 1 TiB
+// Más límites a lo que puede mandar el otro dispositivo (entrada no fiable); los de cada mensaje, en mensajes.ts
 const MAX_REMOTE_FILES = 1000;
 const MAX_REMOTE_TEXTS = 100;
 const MAX_REMOTE_TEXT_CHARS = 20_000_000; // entre todos los textos recibidos
 const MAX_INCOMING_TEXTS = 20; // textos a medio recibir a la vez
-const MAX_MSG_CHARS = 100_000; // un mensaje JSON legítimo no llega a 70.000
+const RATE_SAMPLE_MS = 500; // cada cuánto se mide la velocidad
 const REDRAW_MS = 100; // el progreso se redibuja como mucho cada tanto
 const PING_MS = 5000; // latido: un ping cada tanto
 const DEAD_MS = 15_000; // sin ninguna señal del otro lado durante tanto tiempo, la conexión se da por muerta
@@ -53,56 +58,16 @@ type Active = {
   why: string | null; // motivo si se canceló mientras se preparaba
 };
 
-// Los ids los genera randomId(): 32 hex. Así tampoco pueden ser "__proto__" ni nada raro como clave de objeto.
-const isId = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{32}$/.test(v);
-const isCount = (v: unknown, max: number): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 && v <= max;
-
-// Devuelve el mensaje solo si tiene la forma exacta del protocolo; nombre, tipo y formato ya salen limpios
-function parseMsg(data: string): PeerMsg | null {
-  if (data.length > MAX_MSG_CHARS) return null;
-  let raw: unknown;
-  try {
-    raw = JSON.parse(data);
-  } catch {
-    return null;
-  }
-  if (!raw || typeof raw !== 'object') return null;
-  const m = raw as Record<string, unknown>;
-  switch (m.t) {
-    case 'ping':
-    case 'pong':
-    case 'bye':
-      return { t: m.t };
-    case 'file-remove':
-    case 'file-start':
-    case 'file-end':
-    case 'file-cancel':
-    case 'text-remove':
-      return isId(m.id) ? { t: m.t, id: m.id } : null;
-    case 'file-add':
-      if (!isId(m.id) || typeof m.name !== 'string' || !isCount(m.size, MAX_FILE_SIZE)) return null;
-      return { t: 'file-add', id: m.id, name: sanitizeName(m.name), size: m.size, mime: sanitizeMime(m.mime) };
-    case 'file-request':
-      if (!isId(m.id)) return null;
-      if (m.offset === undefined) return { t: 'file-request', id: m.id };
-      return isCount(m.offset, MAX_FILE_SIZE) ? { t: 'file-request', id: m.id, offset: m.offset } : null;
-    case 'file-ack':
-      return isId(m.id) && isCount(m.received, MAX_FILE_SIZE) ? { t: 'file-ack', id: m.id, received: m.received } : null;
-    case 'text-add':
-      if (!isId(m.id) || typeof m.content !== 'string' || m.content.length > TEXT_PART) return null;
-      if (!isCount(m.parts, MAX_PARTS) || m.parts < 1 || !isCount(m.part, MAX_PARTS) || m.part >= m.parts) return null;
-      return { t: 'text-add', id: m.id, format: sanitizeFormat(m.format), content: m.content, part: m.part, parts: m.parts };
-    default:
-      return null;
-  }
-}
-
 export function useSala(channel: RTCDataChannel) {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [texts, setTexts] = useState<TextItem[]>([]);
   const [connected, setConnected] = useState(channel.readyState === 'open');
   const [transfers, setTransfers] = useState<Record<string, Transfer>>({});
   const [notice, setNotice] = useState<string | null>(null);
+  const [myName, setMyNameState] = useState(cargarNombre);
+  const [peerName, setPeerName] = useState<string | null>(null); // null hasta que el otro dispositivo dice cómo se llama
+  const myNameRef = useRef(myName);
+  myNameRef.current = myName;
 
   const channelRef = useRef(channel);
   const filesRef = useRef(files);
@@ -129,6 +94,7 @@ export function useSala(channel: RTCDataChannel) {
 
   // Transfers: la fuente de verdad es el ref; el estado de React se actualiza como mucho cada REDRAW_MS
   const tr = useRef<Record<string, Transfer>>({});
+  const samples = useRef<Record<string, { at: number; fraction: number }>>({}); // última medida de velocidad de cada transferencia
   const lastDraw = useRef(0);
   const drawTimer = useRef(0);
   const releaseAwake = useRef<(() => void) | null>(null);
@@ -155,9 +121,11 @@ export function useSala(channel: RTCDataChannel) {
   };
   const setTransfer = (id: string, t: Transfer) => {
     tr.current[id] = t;
+    delete samples.current[id]; // cambio de estado: la velocidad se vuelve a medir desde aquí
     changed();
   };
   const dropTransfer = (id: string) => {
+    delete samples.current[id];
     if (id in tr.current) {
       delete tr.current[id];
       changed();
@@ -166,7 +134,16 @@ export function useSala(channel: RTCDataChannel) {
   const setFraction = (id: string, fraction: number) => {
     const t = tr.current[id];
     if (!t) return;
-    tr.current[id] = { ...t, fraction };
+    let rate = t.rate;
+    const now = performance.now();
+    const prev = samples.current[id];
+    if (!prev) samples.current[id] = { at: now, fraction };
+    else if (now - prev.at >= RATE_SAMPLE_MS) {
+      const instant = (fraction - prev.fraction) / ((now - prev.at) / 1000);
+      rate = rate === undefined ? instant : rate * 0.7 + instant * 0.3;
+      samples.current[id] = { at: now, fraction };
+    }
+    tr.current[id] = { ...t, fraction, rate };
     if (!drawTimer.current) drawTimer.current = window.setTimeout(draw, Math.max(0, REDRAW_MS - (performance.now() - lastDraw.current)));
   };
 
@@ -449,7 +426,7 @@ export function useSala(channel: RTCDataChannel) {
         case 'file-add':
           // El otro dispositivo solo puede tocar lo suyo: nunca una entrada mía (conoce mis ids)
           setFiles((prev) => {
-            const item: FileItem = { id: m.id, name: m.name, size: m.size, mime: m.mime, mine: false, available: true };
+            const item: FileItem = { id: m.id, name: m.name, size: m.size, mime: m.mime, mine: false, available: true, thumb: m.thumb };
             const old = prev.find((f) => f.id === m.id);
             if (old?.mine) return prev;
             if (old) return prev.map((f) => (f.id === m.id ? item : f));
@@ -486,6 +463,9 @@ export function useSala(channel: RTCDataChannel) {
           void pump();
           break;
         }
+        case 'hello':
+          setPeerName(m.name || null);
+          break;
         case 'ping':
           post({ t: 'pong' });
           break;
@@ -573,10 +553,12 @@ export function useSala(channel: RTCDataChannel) {
     channel.addEventListener('open', onOpen);
     channel.addEventListener('close', onClose);
     channel.addEventListener('message', onMessage);
+    replayEarly(channel, onMessage); // lo que el otro dispositivo envió antes de que esta pantalla escuchara
 
     // Canal nuevo (o primera vez): el otro dispositivo necesita ver lo mío
+    post({ t: 'hello', name: myNameRef.current });
     for (const f of filesRef.current) {
-      if (f.mine) post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime });
+      if (f.mine) post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime, thumb: f.thumb });
     }
     for (const t of textsRef.current) {
       if (t.mine) postText(t.id, t.format, t.content);
@@ -612,6 +594,13 @@ export function useSala(channel: RTCDataChannel) {
 
   // ---------- Acciones de la pantalla ----------
 
+  const setMyName = useCallback((nuevo: string) => {
+    const nombre = sanitizeDeviceName(nuevo) || nombrePorDefecto();
+    guardarNombre(nombre);
+    setMyNameState(nombre);
+    post({ t: 'hello', name: nombre });
+  }, []);
+
   const addFiles = useCallback((list: File[]) => {
     const added: FileItem[] = list.map((file) => {
       const id = randomId();
@@ -620,6 +609,16 @@ export function useSala(channel: RTCDataChannel) {
     });
     setFiles((prev) => [...prev, ...added]);
     for (const f of added) post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime });
+    // La miniatura llega después, sin retrasar el anuncio: se actualiza la lista y se vuelve a anunciar el archivo
+    for (const f of added) {
+      const file = mine.current.get(f.id);
+      if (!file) continue;
+      void crearMiniatura(file).then((thumb) => {
+        if (!thumb || !mine.current.has(f.id)) return; // sin miniatura, o el archivo ya se quitó
+        setFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, thumb } : x)));
+        post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime, thumb });
+      });
+    }
   }, []);
 
   const removeFile = useCallback((id: string) => {
@@ -669,6 +668,45 @@ export function useSala(channel: RTCDataChannel) {
       });
   }, []);
 
+  // Pide todos los archivos disponibles del otro dispositivo. Debe llamarse directamente desde el clic.
+  // Con selector de carpetas se elige una sola vez dónde guardar; sin selector (guardado en memoria) se pide uno a uno.
+  const downloadAll = useCallback(async () => {
+    const libres = () =>
+      filesRef.current.filter((f) => !f.mine && f.available && !wanted.current.has(f.id) && !paused.current.has(f.id) && current.current?.id !== f.id);
+    if (!libres().length) return;
+    if (!hasFolderPicker()) {
+      for (const f of libres()) download(f.id);
+      return;
+    }
+    if (picking.current) return void setNotice('Termina de elegir dónde guardar el archivo anterior');
+    picking.current = true;
+    setNotice(null);
+    const gen = generation.current;
+    try {
+      const dir = await pickFolder();
+      let fallos = 0;
+      for (const item of libres()) {
+        try {
+          const dest = await folderDestination(dir, item);
+          if (gen !== generation.current || !filesRef.current.some((f) => f.id === item.id && f.available)) {
+            settle(null, dest.discard(), item.name); // el archivo o la conexión se fueron mientras tanto
+            continue;
+          }
+          wanted.current.set(item.id, { item, dest, dl: null, offset: 0 });
+          setTransfer(item.id, { direction: 'in', fraction: 0, state: 'queued' });
+        } catch {
+          fallos++;
+        }
+      }
+      if (fallos) setNotice(`No se pudo preparar el guardado de ${fallos} ${fallos === 1 ? 'archivo' : 'archivos'}`);
+      next();
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) setNotice('No se pudo abrir la carpeta elegida');
+    } finally {
+      picking.current = false;
+    }
+  }, []);
+
   // Cancela una transferencia propia: una descarga (en cola o en marcha) o un envío
   const cancelDownload = useCallback((id: string) => {
     if (wanted.current.has(id) || paused.current.has(id)) return dropDownload(id, null);
@@ -683,11 +721,15 @@ export function useSala(channel: RTCDataChannel) {
     connected,
     transfers,
     notice,
+    myName,
+    peerName,
+    setMyName,
     addFiles,
     removeFile,
     addText,
     removeText,
     download,
+    downloadAll,
     cancelDownload,
   };
 }

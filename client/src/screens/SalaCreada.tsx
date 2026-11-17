@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatToken } from '../../../shared/token';
+import { copiarTexto } from '../ui/portapapeles';
+import QrCodigo from '../ui/QrCodigo';
 
 const EXPIRA_MS = 5 * 60_000;
 
 type Props = {
   token: string;
+  solicitud: boolean; // un dispositivo pide unirse y hay que aceptarlo o rechazarlo
+  onAceptar(): void;
+  onRechazar(): void;
   onCancelar(): void;
   onCrearOtro(): void;
 };
@@ -23,32 +28,6 @@ function Puntos() {
       <span>.</span>
     </span>
   );
-}
-
-// Copia con la API moderna y, si no existe (páginas sin HTTPS), con un textarea oculto
-async function copiarTexto(texto: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(texto);
-      return true;
-    }
-  } catch {
-    // se prueba el respaldo
-  }
-  const area = document.createElement('textarea');
-  area.value = texto;
-  area.setAttribute('readonly', '');
-  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
-  document.body.appendChild(area);
-  area.select();
-  area.setSelectionRange(0, texto.length);
-  try {
-    return document.execCommand('copy');
-  } catch {
-    return false;
-  } finally {
-    area.remove();
-  }
 }
 
 // Pantalla entre el emparejamiento y la sala (la conexión directa se está abriendo)
@@ -87,7 +66,7 @@ export function Conectando({ estado, onReintentar, onCancelar }: ConectandoProps
   );
 }
 
-export default function SalaCreada({ token, onCancelar, onCrearOtro }: Props) {
+export default function SalaCreada({ token, solicitud, onAceptar, onRechazar, onCancelar, onCrearOtro }: Props) {
   const [caducado, setCaducado] = useState(false);
   const [copiado, setCopiado] = useState<'si' | 'no' | null>(null);
   const aviso = useRef<number | undefined>(undefined);
@@ -109,6 +88,20 @@ export default function SalaCreada({ token, onCancelar, onCrearOtro }: Props) {
   return (
     <main className="pantalla text-center">
       <div className="tarjeta flex flex-col items-center gap-4">
+        {solicitud && (
+          <div role="alert" className="w-full rounded-xl border-2 border-acento-texto bg-superficie p-3 text-left">
+            <p className="font-semibold">Un dispositivo quiere unirse</p>
+            <p className="mb-3 text-sm text-suave">Acepta solo si lo estás uniendo tú ahora mismo.</p>
+            <div className="flex gap-2">
+              <button className="btn btn-primario flex-1" onClick={onAceptar}>
+                Aceptar
+              </button>
+              <button className="btn btn-secundario flex-1" onClick={onRechazar}>
+                Rechazar
+              </button>
+            </div>
+          </div>
+        )}
         {caducado ? (
           <>
             <p role="status" className="text-lg">
@@ -127,7 +120,9 @@ export default function SalaCreada({ token, onCancelar, onCrearOtro }: Props) {
             >
               {formatToken(token)}
             </p>
-            <p className="text-sm text-suave">Escríbelo en el otro dispositivo</p>
+            <p className="text-sm text-suave">Escríbelo en el otro dispositivo o escanea el QR</p>
+            {/* El código va en la parte tras «#»: el navegador no la envía al servidor */}
+            <QrCodigo texto={`${location.origin}/#${token}`} etiqueta="Código QR para unirse a la sala" />
             <button className="btn btn-primario w-full" onClick={copiar}>
               {copiado === 'si' ? 'Copiado' : 'Copiar código'}
             </button>

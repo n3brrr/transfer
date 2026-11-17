@@ -121,6 +121,15 @@ Cada archivo del proyecto, la tarea que lo crea y las que lo modifican. Si un ar
 | `client/src/files/validar.ts` | — (segunda ronda) | — |
 | `client/src/files/formatos.ts` | — (formatos de texto) | — |
 | `client/public/favicon.svg` | — (segunda ronda) | — |
+| `docker-compose.local.yml` | — (cuarta ronda: modo rápido local) | — |
+| `client/src/files/resaltado.ts` | — (cuarta ronda: highlight.js y detección de formato; solo lo carga la pestaña Texto) | — |
+| `client/src/files/miniatura.ts` | — (cuarta ronda: miniaturas JPEG de las imágenes) | — |
+| `client/src/files/qr.ts` | — (cuarta ronda: generador de códigos QR sin dependencias) | — |
+| `client/src/state/mensajes.ts` | — (cuarta ronda: validación de los mensajes del canal (`parseMsg`)) | — |
+| `client/src/state/nombre.ts` | — (cuarta ronda: nombre del dispositivo en `localStorage`) | — |
+| `client/src/ui/portapapeles.ts` | — (cuarta ronda: copiar al portapapeles) | — |
+| `client/src/ui/QrCodigo.tsx` | — (cuarta ronda: QR en SVG) | — |
+| `client/src/ui/useAvisoTitulo.ts` | — (cuarta ronda: contador de novedades en el título de la pestaña) | — |
 | `dist-server/` (no git) | `pnpm build:server` | — |
 | `pnpm-workspace.yaml` | 0.1 (pnpm) | — |
 | `.dockerignore` | 5.1 | — |
@@ -136,8 +145,8 @@ Cada archivo del proyecto, la tarea que lo crea y las que lo modifican. Si un ar
 - Generado por pnpm: `pnpm-lock.yaml`
 - Ya existen (solo se añaden al primer commit): `CLAUDE.md`, `AGENTS.md`, `docs/plan.md`
 
-- [ ] `git init -b main` en `proyectos/transferir`. `.gitignore`: `node_modules`, `dist`, `.env`, `tmp/`, `.superpowers`. `.gitattributes`: `* text=auto eol=lf`.
-- [ ] Primer commit en `main` con `CLAUDE.md`, `AGENTS.md`, `docs/`, `.gitignore`, `.gitattributes` (`chore: iniciar repositorio`). Crear y pasar a `dev`. Si hay remoto, `git push -u origin main dev`; si no, avisar.
+- [x] `git init -b main` en `proyectos/transferir`. `.gitignore`: `node_modules`, `dist`, `.env`, `tmp/`, `.superpowers`. `.gitattributes`: `* text=auto eol=lf`.
+- [x] Primer commit en `main` con `CLAUDE.md`, `AGENTS.md`, `docs/`, `.gitignore`, `.gitattributes` (`chore: iniciar repositorio`). Crear y pasar a `dev`. Si hay remoto, `git push -u origin main dev`; si no, avisar.
 - [x] `package.json` con `"packageManager": "pnpm@<versión actual>"` y dependencias: `react`, `react-dom`, `ws`, `highlight.js`. Desarrollo: `typescript`, `vite`, `@vitejs/plugin-react`, `tailwindcss`, `@tailwindcss/vite`, `tsx`, `vitest`, `@types/*`.
 - [x] `tsconfig.json`: `strict: true`, `jsx: react-jsx`, `module`/`moduleResolution` para Vite (`ESNext`/`Bundler`), `noEmit: true`, incluye `shared`, `server`, `client/src`, `tests`.
 - [x] Scripts: `dev:server` = `tsx watch server/index.ts`, `dev:client` = `vite client`, `build` = `vite build client`, `start` = `tsx server/index.ts`, `test` = `vitest run`.
@@ -434,7 +443,7 @@ function receiver(expectedSize: number, write: (c: ArrayBuffer) => Promise<void>
 
 ## Cambios respecto al plan (decididos durante la construcción)
 
-- Sin git y sin tests por indicación del usuario: quedan sin marcar los pasos de git, los commits y los de `tests/`. Los archivos `tests/rooms.test.ts` y `tests/chunker.test.ts` no existen todavía.
+- Los tests (`tests/rooms.test.ts`, `tests/chunker.test.ts` y los demás pasos de tests) siguen aplazados por indicación del usuario. Git ya está en uso: rama `dev`, commits por grupos de archivos y push tras verificar cada bloque.
 - `pnpm-workspace.yaml` (con `allowBuilds: esbuild`): pnpm lo exige para que esbuild pueda instalarse.
 - `.dockerignore`: sin él, `COPY . .` copiaría `node_modules` de Windows a la imagen.
 - Dockerfile: `npm install -g pnpm@12.5.1` en vez de `corepack enable`, para no depender de que corepack conozca esa versión de pnpm.
@@ -460,6 +469,15 @@ function receiver(expectedSize: number, write: (c: ArrayBuffer) => Promise<void>
   - **Código de la sala (Inicio):** se escribe en 8 casillas (4 - 4) con un único campo de texto invisible encima (pegar, autocompletar y lectores de pantalla siguen funcionando). Todo lo que entra pasa por `sanitizeToken` (`shared/token.ts`): solo caracteres del alfabeto, en mayúsculas y como mucho 8; pegar sustituye el código entero. `Unirme` solo se activa con un código válido (`isValidToken`). El servidor aplica la misma regla antes de buscar la sala: un código con otro formato da `not_found` y cuenta como intento fallido. Probado: 10 códigos mal formados en el servidor, entradas hostiles y pegados en Chrome, y captura a 320 px.
   - **Quedó fuera:** QR para el código (haría falta una librería o un generador propio sin poder verificarlo), TURN propio (Fase 2), confirmación del creador antes de aceptar a un dispositivo (cambia el diseño; ver `docs/seguridad.md`), fijar versiones de `xcaddy`/imágenes base, modo oscuro (el usuario eligió el fondo crema).
   - **Sin verificar en dispositivos reales:** escritura directa a disco con el selector de guardado real, borrado del archivo vacío al cancelar (`handle.remove`), corte de red real (ICE `disconnected`/`failed`), velocidad en Wi-Fi, móvil real e iOS, imagen de Caddy con DuckDNS.
+- **Cuarta ronda (revisión completa y mejoras):**
+  - **Arreglos:** `vitest.config.ts` era de otro proyecto y rompía `pnpm test` y `tsc`; ahora es una configuración propia (`passWithNoTests`). Los mensajes que llegaban por el canal antes de montar la sala se perdían: ahora se guardan en `net/peer.ts` y se reproducen (`replayEarly`). Los textos con muchos caracteres escapados se descartaban en silencio: trozos de 15.000 caracteres y `MAX_PARTS` 80 (`state/mensajes.ts`).
+  - **Emparejamiento con confirmación:** el creador acepta o rechaza a quien quiere unirse (`pending`, `join-request`, `accept`, `reject`, `join-cancelled`; 60 s de límite, errores `rejected` y `no_answer`). Un miembro que vuelve a una sala emparejada entra directo; `join.direct` y `peer-joined.direct` indican que su canal sigue abierto y no se reempareja (si solo un lado lo conserva, el otro manda la señal `repair`).
+  - **Servidor:** límite de 10 salas creadas por minuto y por IP (`allowCreate`) y línea con el total de rechazos por minuto, sin IPs.
+  - **Docker:** imágenes por `@sha256:`, `caddy-dns/duckdns@v0.5.0` (la imagen de Caddy ya compila), `encode zstd gzip`, `BIND_IP` para publicar el 443 solo en la IP de la LAN y `react`, `react-dom`, `highlight.js` y `lucide-react` en `devDependencies` (la imagen final lleva solo `ws`).
+  - **Cliente:** `files/resaltado.ts` (nuevo) separa highlight.js de `formatos.ts` y la pestaña Texto se carga aparte (`React.lazy`): el bundle principal baja de 402 KB a unos 285 KB. `state/mensajes.ts` (nuevo) contiene `parseMsg`; `ui/portapapeles.ts` unifica el copiado; confirmación al salir con transferencias en curso; aviso de guardado en memoria antes de descargar archivos grandes (`memoryNotice`).
+  - **Funciones nuevas:** velocidad y tiempo restante; **Descargar todos** con una sola carpeta (`showDirectoryPicker`, sin pisar archivos existentes); miniaturas de imágenes (`files/miniatura.ts`, JPEG de 96 px en `file-add.thumb`, validado con `sanitizeThumb`); nombre editable del dispositivo (`hello`, `state/nombre.ts`, `localStorage`); botón **Vaciar mis textos**; contador en el título con la pestaña oculta; QR de la sala (`files/qr.ts`, generador propio sin dependencias, versiones 1 a 7, nivel M; el enlace `/#CÓDIGO` se une directamente).
+  - **Modo rápido local:** `docker-compose.local.yml` (un solo contenedor, puerto 8080, sin Caddy ni DuckDNS ni `.env`) para usarla bajo demanda solo en la LAN. El modo con DuckDNS y HTTPS sigue disponible. Se descartó desplegarla en `pc1-personal` y en Vercel (no admite WebSockets ni procesos de larga vida).
+  - **Descartado a propósito:** guardado en streaming por Service Worker para móviles (obligaría a relajar `worker-src` en la CSP y no es fiable en iOS), opción de quitar los STUN públicos y la Fase 2.
 - Reconectar tras recargar: el token de la sala se guarda en `sessionStorage` y, al abrir la app, se intenta volver a esa sala.
 
 ## FASE 2 (solo cuando todo lo anterior esté terminado)

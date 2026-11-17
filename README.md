@@ -9,7 +9,7 @@
 Aplicación web personal para enviar archivos y textos entre dos dispositivos emparejados con un código. Los datos viajan directamente entre ambos por WebRTC; el servidor solo sirve de puente para conectarlos y no guarda nada.
 
 ![Node](https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?logo=tailwindcss&logoColor=white)
@@ -51,6 +51,7 @@ Transferir es una web pensada para uso personal: creas una sala en un dispositiv
 - **Sin cuentas:** no hay registro ni base de datos; el emparejamiento se hace con un código de 8 caracteres.
 - **Sin instalación en los otros dispositivos:** basta con abrir la dirección en el navegador.
 - **Pensada para móvil y PC:** la interfaz se adapta desde 360 px.
+- **Solo en tu red:** los dos dispositivos deben estar en la misma red local; no hay servidor TURN, así que no está pensada para conectar desde fuera de casa.
 
 ## Funcionalidades
 
@@ -58,8 +59,8 @@ Transferir es una web pensada para uso personal: creas una sala en un dispositiv
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Salas**           | Código de 8 caracteres (`XXXX-XXXX`) que caduca a los 5 minutos si nadie se une. Sala de dos dispositivos como máximo.                    |
 | **Emparejamiento**  | Enlace o código QR para unirse. Quien crea la sala debe aceptar al otro dispositivo.                                                       |
-| **Archivos**        | Envío en bloques de 16 KB con control de flujo, miniaturas de imágenes, velocidad y tiempo restante, y descarga de todos a una carpeta.  |
-| **Textos**          | Envío de textos de hasta 1 MB, con resaltado de sintaxis cuando el contenido es código.                                                    |
+| **Archivos**        | Envío en bloques de 64 KB con control de flujo, miniaturas de imágenes, velocidad y tiempo restante, y descarga de todos a una carpeta.  |
+| **Textos**          | Envío de textos de hasta 1 MB, con resaltado de sintaxis cuando el contenido es código, y botón para vaciar los propios.                  |
 | **Reconexión**      | Si un dispositivo se cae, la sala le espera 2 minutos para volver con el mismo identificador.                                              |
 | **Avisos**          | Confirmación antes de salir con transferencias en curso y aviso en el título de la pestaña cuando llega algo con la pestaña oculta.      |
 | **Nombre**          | Cada dispositivo puede tener un nombre editable visible para el otro.                                                                      |
@@ -97,7 +98,6 @@ flowchart LR
 ```bash
 git clone https://github.com/n3brrr/transfer.git
 cd transfer
-git checkout dev
 pnpm install
 ```
 
@@ -112,9 +112,21 @@ Para probar la transferencia necesitas dos navegadores o dos ventanas en modo pr
 
 ## Despliegue en casa
 
-El despliegue está pensado para un PC de casa con Docker Desktop, detrás de Caddy, con un dominio de [DuckDNS](https://www.duckdns.org/) y acceso solo desde la red local. La guía paso a paso está en [`docs/arranque.md`](docs/arranque.md).
+Hay dos formas de ejecutarla en un PC de casa con Docker Desktop. La guía paso a paso de ambas está en [`docs/arranque.md`](docs/arranque.md).
 
-En resumen:
+### Modo rápido: bajo demanda, solo en tu red, sin HTTPS
+
+Un solo contenedor que arrancas cuando lo necesitas y que desaparece al pararlo. No hace falta dominio ni `.env`.
+
+```bash
+docker compose -f docker-compose.local.yml up --build
+```
+
+Abre `http://IP-DE-TU-PC:8080` en el PC y en el móvil, conectados a la misma Wi-Fi (la primera vez hay que permitir el puerto 8080 en el firewall de Windows, en la red Privada). Para pararlo, `Ctrl+C`. Sin HTTPS, en el móvil no están el botón Pegar ni el aviso de pantalla encendida; el resto funciona igual y los datos van cifrados por WebRTC.
+
+### Con dominio y HTTPS
+
+Detrás de Caddy, con un dominio de [DuckDNS](https://www.duckdns.org/) y acceso solo desde la red local. En resumen:
 
 1. Copia `.env.example` a `.env` y rellena `DOMAIN`, `DUCKDNS_TOKEN` y `BIND_IP`.
 2. Arranca los contenedores:
@@ -140,9 +152,10 @@ En resumen:
 ## Seguridad
 
 - **Datos fuera del servidor:** archivos y textos viajan por WebRTC; el servidor solo ve el saludo de conexión y no escribe nada en disco (`read_only` en Docker).
-- **Entrada no fiable:** lo que llega del otro dispositivo se valida y se sanean los nombres de archivo antes de guardarlos o mostrarlos.
+- **Entrada no fiable:** lo que llega del otro dispositivo se valida (también las miniaturas y el nombre del dispositivo) y se sanean los nombres de archivo antes de guardarlos o mostrarlos.
 - **Cabeceras:** Content Security Policy y demás cabeceras definidas en el servidor; el WebSocket solo acepta el origen configurado.
-- **Límites:** máximo de salas por IP, intentos fallidos de unirse limitados por IP y minuto, y caducidad de salas.
+- **Emparejamiento:** quien crea la sala debe aceptar o rechazar a cada dispositivo que quiere unirse (60 s de margen), aunque tenga el código.
+- **Límites:** 10 salas creadas por minuto y por IP, intentos fallidos de unirse limitados por IP y minuto, y caducidad de salas.
 - **Contenedores:** la app corre como usuario sin privilegios, sin capacidades de Linux y con límites de memoria y procesos.
 - **Riesgos conocidos:** están documentados y aceptados en [`docs/seguridad.md`](docs/seguridad.md).
 
@@ -161,8 +174,9 @@ transferir/
 ├── shared/                # Protocolo y generación de tokens (cliente y servidor)
 ├── docker/                # Dockerfiles y Caddyfile
 ├── docs/                  # Plan, guía de arranque y seguridad
-├── docker-compose.yml     # App + Caddy con DuckDNS
-└── .env.example           # Variables necesarias (sin valores)
+├── docker-compose.yml        # App + Caddy con DuckDNS (HTTPS)
+├── docker-compose.local.yml  # Modo rápido: un contenedor, solo LAN, bajo demanda
+└── .env.example              # Variables necesarias (sin valores)
 ```
 
 ## Autor
