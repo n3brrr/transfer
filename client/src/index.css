@@ -10,7 +10,9 @@
   /* Variantes con contraste AA (4,5:1) para texto pequeño y botones con texto blanco */
   --color-acento-texto: #ab4f2b;
   --color-suave: #6b5a49; /* texto secundario: tinta al 75 % sobre crema */
-  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-mono:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono',
+    monospace;
 }
 
 /* Resaltado de código sobre fondo oscuro */
@@ -46,7 +48,9 @@
 }
 
 html {
-  background-color: var(--color-crema); /* también tras el área segura y en el rebote de scroll */
+  background-color: var(
+    --color-crema
+  ); /* también tras el área segura y en el rebote de scroll */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: rgb(200 100 60 / 0.15);
@@ -57,7 +61,12 @@ body {
   min-height: 100dvh;
   background-color: var(--color-crema);
   color: var(--color-tinta);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   font-size: 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -105,8 +114,10 @@ button:disabled {
     align-items: center;
     justify-content: center;
     gap: 1rem;
-    padding: max(1.5rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-      max(1.5rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    padding: max(1.5rem, env(safe-area-inset-top))
+      max(1rem, env(safe-area-inset-right))
+      max(1.5rem, env(safe-area-inset-bottom))
+      max(1rem, env(safe-area-inset-left));
   }
 
   /* Margen lateral de 16 px, o el del área segura si es mayor */

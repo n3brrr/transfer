@@ -1,24 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
-import { formatToken } from '../../../shared/token';
-import { copiarTexto } from '../ui/portapapeles';
-import QrCodigo from '../ui/QrCodigo';
+import { useEffect, useRef, useState } from 'react'
+import { formatToken } from '../../../shared/token'
+import { copiarTexto } from '../ui/portapapeles'
+import QrCodigo from '../ui/QrCodigo'
 
-const EXPIRA_MS = 5 * 60_000;
+const EXPIRA_MS = 5 * 60_000
 
 type Props = {
-  token: string;
-  solicitud: boolean; // un dispositivo pide unirse y hay que aceptarlo o rechazarlo
-  onAceptar(): void;
-  onRechazar(): void;
-  onCancelar(): void;
-  onCrearOtro(): void;
-};
+  token: string
+  solicitud: boolean // un dispositivo pide unirse y hay que aceptarlo o rechazarlo
+  onAceptar(): void
+  onRechazar(): void
+  onCancelar(): void
+  onCrearOtro(): void
+}
 
 type ConectandoProps = {
-  estado: 'conectando' | 'reconectando' | 'fallo';
-  onReintentar(): void;
-  onCancelar(): void;
-};
+  estado: 'conectando' | 'reconectando' | 'fallo'
+  onReintentar(): void
+  onCancelar(): void
+}
 
 function Puntos() {
   return (
@@ -27,24 +27,35 @@ function Puntos() {
       <span>.</span>
       <span>.</span>
     </span>
-  );
+  )
 }
 
 // Pantalla entre el emparejamiento y la sala (la conexión directa se está abriendo)
-export function Conectando({ estado, onReintentar, onCancelar }: ConectandoProps) {
+export function Conectando({
+  estado,
+  onReintentar,
+  onCancelar,
+}: ConectandoProps) {
   return (
     <main className="pantalla text-center">
       <div className="tarjeta flex flex-col items-center gap-4">
         {estado === 'fallo' ? (
           <>
             <p role="alert" className="text-lg">
-              No se pudo conectar con el otro dispositivo. Comprueba que están en la misma red.
+              No se pudo conectar con el otro dispositivo. Comprueba que están
+              en la misma red.
             </p>
             <div className="flex w-full flex-col gap-2">
-              <button className="btn btn-primario w-full" onClick={onReintentar}>
+              <button
+                className="btn btn-primario w-full"
+                onClick={onReintentar}
+              >
                 Reintentar
               </button>
-              <button className="btn btn-secundario w-full" onClick={onCancelar}>
+              <button
+                className="btn btn-secundario w-full"
+                onClick={onCancelar}
+              >
                 Volver
               </button>
             </div>
@@ -63,40 +74,55 @@ export function Conectando({ estado, onReintentar, onCancelar }: ConectandoProps
         )}
       </div>
     </main>
-  );
+  )
 }
 
-export default function SalaCreada({ token, solicitud, onAceptar, onRechazar, onCancelar, onCrearOtro }: Props) {
-  const [caducado, setCaducado] = useState(false);
-  const [copiado, setCopiado] = useState<'si' | 'no' | null>(null);
-  const aviso = useRef<number | undefined>(undefined);
+export default function SalaCreada({
+  token,
+  solicitud,
+  onAceptar,
+  onRechazar,
+  onCancelar,
+  onCrearOtro,
+}: Props) {
+  const [caducado, setCaducado] = useState(false)
+  const [copiado, setCopiado] = useState<'si' | 'no' | null>(null)
+  const aviso = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    setCaducado(false);
-    const timer = setTimeout(() => setCaducado(true), EXPIRA_MS);
-    return () => clearTimeout(timer);
-  }, [token]);
+    setCaducado(false)
+    const timer = setTimeout(() => setCaducado(true), EXPIRA_MS)
+    return () => clearTimeout(timer)
+  }, [token])
 
-  useEffect(() => () => clearTimeout(aviso.current), []);
+  useEffect(() => () => clearTimeout(aviso.current), [])
 
   async function copiar() {
-    setCopiado((await copiarTexto(formatToken(token))) ? 'si' : 'no');
-    clearTimeout(aviso.current);
-    aviso.current = window.setTimeout(() => setCopiado(null), 2500);
+    setCopiado((await copiarTexto(formatToken(token))) ? 'si' : 'no')
+    clearTimeout(aviso.current)
+    aviso.current = window.setTimeout(() => setCopiado(null), 2500)
   }
 
   return (
     <main className="pantalla text-center">
       <div className="tarjeta flex flex-col items-center gap-4">
         {solicitud && (
-          <div role="alert" className="w-full rounded-xl border-2 border-acento-texto bg-superficie p-3 text-left">
+          <div
+            role="alert"
+            className="w-full rounded-xl border-2 border-acento-texto bg-superficie p-3 text-left"
+          >
             <p className="font-semibold">Un dispositivo quiere unirse</p>
-            <p className="mb-3 text-sm text-suave">Acepta solo si lo estás uniendo tú ahora mismo.</p>
+            <p className="mb-3 text-sm text-suave">
+              Acepta solo si lo estás uniendo tú ahora mismo.
+            </p>
             <div className="flex gap-2">
               <button className="btn btn-primario flex-1" onClick={onAceptar}>
                 Aceptar
               </button>
-              <button className="btn btn-secundario flex-1" onClick={onRechazar}>
+              <button
+                className="btn btn-secundario flex-1"
+                onClick={onRechazar}
+              >
                 Rechazar
               </button>
             </div>
@@ -120,13 +146,21 @@ export default function SalaCreada({ token, solicitud, onAceptar, onRechazar, on
             >
               {formatToken(token)}
             </p>
-            <p className="text-sm text-suave">Escríbelo en el otro dispositivo o escanea el QR</p>
+            <p className="text-sm text-suave">
+              Escríbelo en el otro dispositivo o escanea el QR
+            </p>
             {/* El código va en la parte tras «#»: el navegador no la envía al servidor */}
-            <QrCodigo texto={`${location.origin}/#${token}`} etiqueta="Código QR para unirse a la sala" />
+            <QrCodigo
+              texto={`${location.origin}/#${token}`}
+              etiqueta="Código QR para unirse a la sala"
+            />
             <button className="btn btn-primario w-full" onClick={copiar}>
               {copiado === 'si' ? 'Copiado' : 'Copiar código'}
             </button>
-            <p role="status" className="flex items-center gap-1 text-sm text-suave">
+            <p
+              role="status"
+              className="flex items-center gap-1 text-sm text-suave"
+            >
               Esperando al otro dispositivo
               <Puntos />
             </p>
@@ -141,5 +175,5 @@ export default function SalaCreada({ token, solicitud, onAceptar, onRechazar, on
         </button>
       </div>
     </main>
-  );
+  )
 }

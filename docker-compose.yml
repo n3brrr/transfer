@@ -5,10 +5,10 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     expose:
-      - "8080"
+      - '8080'
     environment:
-      TRUST_PROXY: "1" # la IP del cliente se lee de X-Forwarded-For (solo es de fiar detrás de Caddy)
-      ALLOWED_ORIGINS: "https://${DOMAIN:?falta DOMAIN en el archivo .env}" # el WebSocket solo acepta la web de esta dirección
+      TRUST_PROXY: '1' # la IP del cliente se lee de X-Forwarded-For (solo es de fiar detrás de Caddy)
+      ALLOWED_ORIGINS: 'https://${DOMAIN:?falta DOMAIN en el archivo .env}' # el WebSocket solo acepta la web de esta dirección
     init: true # PID 1 que recoge procesos y reenvía señales
     read_only: true # el servidor no escribe en disco
     tmpfs:
@@ -26,7 +26,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
 
   caddy:
     build:
@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile.caddy
     ports:
       # BIND_IP (en .env): IP local del PC. Con ella el 443 no se publica en otras interfaces
-      - "${BIND_IP:-0.0.0.0}:443:443"
+      - '${BIND_IP:-0.0.0.0}:443:443'
     env_file: .env
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro

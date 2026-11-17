@@ -65,6 +65,7 @@ Aplican siempre, sea Claude u otro modelo.
 - Cliente: Vite + React + Tailwind. Servidor: Node 24 + `ws`; en desarrollo se ejecuta con `tsx` y en Docker se compila a `dist-server/` con `pnpm build:server`. Tests: Vitest.
 - Despliegue: Docker Compose + Caddy (plugin DuckDNS) en el PC del usuario.
 - Iconos: `lucide-react` (la única dependencia añadida después del plan, a petición del usuario).
+- Formato: `prettier` (dependencia de desarrollo añadida a petición del usuario).
 - No añadir dependencias que no estén en el plan sin preguntar.
 
 ## Arquitectura (visión de conjunto)
@@ -111,6 +112,7 @@ transferir/
 - Desarrollo: `pnpm dev:server` (puerto 8080) y `pnpm dev:client` (Vite, proxy de `/ws` al servidor). `pnpm start` sirve `client/dist` tras `pnpm build`.
 - `pnpm dev:server` · `pnpm dev:client` · `pnpm build` · `pnpm start` · `pnpm test`
 - Comprobar tipos: `pnpm exec tsc --noEmit`
+- Formato: Prettier (`.prettierrc.json`). `pnpm format` formatea y `pnpm format:check` comprueba. Formatear antes de cada commit. No hay ESLint.
 
 ## Git
 
