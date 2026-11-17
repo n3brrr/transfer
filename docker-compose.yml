@@ -33,7 +33,8 @@ services:
       context: docker
       dockerfile: Dockerfile.caddy
     ports:
-      - "443:443"
+      # BIND_IP (en .env): IP local del PC. Con ella el 443 no se publica en otras interfaces
+      - "${BIND_IP:-0.0.0.0}:443:443"
     env_file: .env
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro

@@ -44,7 +44,9 @@ En la carpeta del proyecto, copia `.env.example` y llámalo `.env`. Ábrelo y re
 ```
 DOMAIN=mitransfer.duckdns.org
 DUCKDNS_TOKEN=tu-token-aqui
+BIND_IP=192.168.1.35
 ```
+`BIND_IP` es la IP del paso 5: así Docker publica el 443 solo en esa dirección y no en las demás interfaces del PC (recomendado). Si lo dejas vacío, escucha en todas.
 Este archivo es secreto: nunca lo subas a ningún sitio.
 
 ### 8. Abrir el puerto en Windows
