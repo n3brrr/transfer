@@ -6,7 +6,7 @@ import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import type { FromServer, ToServer } from '../shared/protocol';
 import { isValidToken, normalizeToken } from '../shared/token';
 import { Rooms } from './rooms';
-import { allowAttempt, registerFailure, sweepFailures } from './limiter';
+import { allowAttempt, allowCreate, registerFailure, sweepFailures, takeBlocked } from './limiter';
 
 const PORT = Number(process.env.PORT ?? 8080);
 // DIST_DIR permite servir otra carpeta de la web (para probar sin tocar client/dist)
@@ -231,6 +231,7 @@ function connect(ws: WebSocket, ip: string): void {
     }
 
     if (m.t === 'create') {
+      if (!allowCreate(ip)) return send(ws, { t: 'error', code: 'rate_limited' });
       rooms.sweep();
       if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', code: 'rate_limited' });
       takeDevice(m.deviceId);
@@ -294,6 +295,12 @@ setInterval(() => {
   rooms.sweep();
   sweepFailures();
 }, 15_000).unref();
+
+// Aviso genérico (solo un número) si se rechazaron peticiones en el último minuto
+setInterval(() => {
+  const n = takeBlocked();
+  if (n > 0) console.log(`Peticiones rechazadas por límite en el último minuto: ${n}`);
+}, 60_000).unref();
 
 // Ningún error de una petición debe tumbar el servidor; solo se anota un mensaje genérico
 function logError(err: unknown): void {
