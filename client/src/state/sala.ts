@@ -22,15 +22,15 @@ export type TextItem = { id: string; format: string; content: string; mine: bool
 export type Transfer = { direction: 'in' | 'out'; fraction: number; state: 'queued' | 'active' | 'paused' };
 export type Sala = ReturnType<typeof useSala>;
 
-const TEXT_PART = 60_000; // caracteres por mensaje; un mensaje WebRTC admite ~256 KB
+const TEXT_PART = 15_000; // caracteres por mensaje: escapado en JSON puede crecer ×6 y el mensaje debe quedar bajo MAX_MSG_CHARS y ~256 KB
 // Límites a lo que puede mandar el otro dispositivo (entrada no fiable)
-const MAX_PARTS = 20; // un texto de 1 MB son 18 partes
+const MAX_PARTS = 80; // un texto de 1 MB son 70 partes
 const MAX_FILE_SIZE = 2 ** 40; // 1 TiB
 const MAX_REMOTE_FILES = 1000;
 const MAX_REMOTE_TEXTS = 100;
 const MAX_REMOTE_TEXT_CHARS = 20_000_000; // entre todos los textos recibidos
 const MAX_INCOMING_TEXTS = 20; // textos a medio recibir a la vez
-const MAX_MSG_CHARS = 100_000; // un mensaje JSON legítimo no llega a 70.000
+const MAX_MSG_CHARS = 100_000; // un mensaje JSON legítimo no llega a 91.000 (15.000 caracteres × 6 de escapado + cabecera)
 const REDRAW_MS = 100; // el progreso se redibuja como mucho cada tanto
 const PING_MS = 5000; // latido: un ping cada tanto
 const DEAD_MS = 15_000; // sin ninguna señal del otro lado durante tanto tiempo, la conexión se da por muerta
