@@ -1,5 +1,5 @@
 import type { PeerMsg } from '../../../shared/protocol';
-import { sanitizeDeviceName, sanitizeFormat, sanitizeMime, sanitizeName } from '../files/validar';
+import { sanitizeDeviceName, sanitizeFormat, sanitizeMime, sanitizeName, sanitizeThumb } from '../files/validar';
 
 // Todo lo que llega por el canal WebRTC es entrada no fiable: aquí se valida la forma exacta de cada mensaje.
 export const TEXT_PART = 15_000; // caracteres por mensaje: escapado en JSON puede crecer ×6 y el mensaje debe quedar bajo MAX_MSG_CHARS y ~256 KB
@@ -37,7 +37,7 @@ export function parseMsg(data: string): PeerMsg | null {
       return isId(m.id) ? { t: m.t, id: m.id } : null;
     case 'file-add':
       if (!isId(m.id) || typeof m.name !== 'string' || !isCount(m.size, MAX_FILE_SIZE)) return null;
-      return { t: 'file-add', id: m.id, name: sanitizeName(m.name), size: m.size, mime: sanitizeMime(m.mime) };
+      return { t: 'file-add', id: m.id, name: sanitizeName(m.name), size: m.size, mime: sanitizeMime(m.mime), thumb: sanitizeThumb(m.thumb) };
     case 'file-request':
       if (!isId(m.id)) return null;
       if (m.offset === undefined) return { t: 'file-request', id: m.id };

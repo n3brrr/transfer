@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PeerMsg } from '../../../shared/protocol';
 import { randomId } from '../../../shared/token';
+import { crearMiniatura } from '../files/miniatura';
 import { replayEarly } from '../net/peer';
 import { TEXT_PART, parseMsg } from './mensajes';
 import { cargarNombre, guardarNombre, nombrePorDefecto } from './nombre';
@@ -21,7 +22,7 @@ import {
   type Send,
 } from '../files/transfer';
 
-export type FileItem = { id: string; name: string; size: number; mime: string; mine: boolean; available: boolean };
+export type FileItem = { id: string; name: string; size: number; mime: string; mine: boolean; available: boolean; thumb?: string };
 export type TextItem = { id: string; format: string; content: string; mine: boolean };
 // Un archivo que está subiendo o bajando (clave = id del archivo). `paused`: descarga cortada que continuará si el otro vuelve.
 // `rate`: fracción del archivo que avanza por segundo (media suavizada); sirve para la velocidad y el tiempo restante.
@@ -425,7 +426,7 @@ export function useSala(channel: RTCDataChannel) {
         case 'file-add':
           // El otro dispositivo solo puede tocar lo suyo: nunca una entrada mía (conoce mis ids)
           setFiles((prev) => {
-            const item: FileItem = { id: m.id, name: m.name, size: m.size, mime: m.mime, mine: false, available: true };
+            const item: FileItem = { id: m.id, name: m.name, size: m.size, mime: m.mime, mine: false, available: true, thumb: m.thumb };
             const old = prev.find((f) => f.id === m.id);
             if (old?.mine) return prev;
             if (old) return prev.map((f) => (f.id === m.id ? item : f));
@@ -557,7 +558,7 @@ export function useSala(channel: RTCDataChannel) {
     // Canal nuevo (o primera vez): el otro dispositivo necesita ver lo mío
     post({ t: 'hello', name: myNameRef.current });
     for (const f of filesRef.current) {
-      if (f.mine) post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime });
+      if (f.mine) post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime, thumb: f.thumb });
     }
     for (const t of textsRef.current) {
       if (t.mine) postText(t.id, t.format, t.content);
@@ -608,6 +609,16 @@ export function useSala(channel: RTCDataChannel) {
     });
     setFiles((prev) => [...prev, ...added]);
     for (const f of added) post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime });
+    // La miniatura llega después, sin retrasar el anuncio: se actualiza la lista y se vuelve a anunciar el archivo
+    for (const f of added) {
+      const file = mine.current.get(f.id);
+      if (!file) continue;
+      void crearMiniatura(file).then((thumb) => {
+        if (!thumb || !mine.current.has(f.id)) return; // sin miniatura, o el archivo ya se quitó
+        setFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, thumb } : x)));
+        post({ t: 'file-add', id: f.id, name: f.name, size: f.size, mime: f.mime, thumb });
+      });
+    }
   }, []);
 
   const removeFile = useCallback((id: string) => {

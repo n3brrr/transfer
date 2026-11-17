@@ -304,7 +304,7 @@ export default function Archivos({ sala }: { sala: Sala }) {
                 <li key={f.id} className="entra flex flex-col gap-3 rounded-2xl border border-borde bg-superficie p-3 sm:flex-row sm:items-center">
                   <div className={`flex min-w-0 flex-1 items-start gap-3 ${f.available ? '' : 'opacity-60'}`}>
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-crema text-acento">
-                      <Icono tipo={tipoDe(f.name, f.mime)} />
+                      {f.thumb ? <img src={f.thumb} alt="" className="size-11 rounded-xl object-cover" /> : <Icono tipo={tipoDe(f.name, f.mime)} />}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 font-medium [overflow-wrap:anywhere]" title={f.name}>
