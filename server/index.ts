@@ -146,8 +146,10 @@ function parse(raw: RawData, isBinary: boolean): ToServer | null {
     const m = JSON.parse(raw.toString());
     if (!m || typeof m !== 'object') return null;
     if (m.t === 'create' && typeof m.deviceId === 'string' && ID.test(m.deviceId)) return m;
-    if (m.t === 'join' && typeof m.deviceId === 'string' && ID.test(m.deviceId) && typeof m.token === 'string' && m.token.length <= 32) return m;
-    if (m.t === 'signal' || m.t === 'leave') return m;
+    if (m.t === 'join' && typeof m.deviceId === 'string' && ID.test(m.deviceId) && typeof m.token === 'string' && m.token.length <= 32) {
+      return m.direct === undefined || typeof m.direct === 'boolean' ? m : null;
+    }
+    if (m.t === 'signal' || m.t === 'leave' || m.t === 'accept' || m.t === 'reject') return m;
   } catch {
     // JSON no válido
   }
@@ -157,10 +159,16 @@ function parse(raw: RawData, isBinary: boolean): ToServer | null {
 // Solo actúa si esta conexión sigue siendo la vigente del dispositivo
 function leave(deviceId: string, ws: WebSocket): void {
   if (sockets.get(deviceId) !== ws) return;
+  // Si esperaba que lo aceptaran, el creador deja de ver la solicitud
+  const creator = rooms.cancelPending(deviceId);
+  if (creator) send(sockets.get(creator), { t: 'join-cancelled' });
+  // Si quien se va es el creador y la sala se cierra, el que esperaba se queda sin sala
+  const waiting = rooms.pendingOf(deviceId);
   const peer = rooms.peerOf(deviceId);
   rooms.leave(deviceId);
   sockets.delete(deviceId);
   if (peer) send(sockets.get(peer), { t: 'peer-left' });
+  if (waiting && rooms.pendingFor(waiting) === undefined) send(sockets.get(waiting), { t: 'error', code: 'not_found' });
 }
 
 function ipOf(req: IncomingMessage): string {
@@ -249,17 +257,34 @@ function connect(ws: WebSocket, ip: string): void {
       }
       const oldPeer = rooms.peerOf(m.deviceId);
       const result = rooms.join(m.token, m.deviceId);
-      if (result !== 'ok') {
+      if (result !== 'ok' && result !== 'pending') {
         registerFailure(ip);
         return send(ws, { t: 'error', code: result });
       }
       takeDevice(m.deviceId);
       sockets.set(m.deviceId, ws);
-      send(ws, { t: 'joined' });
-      const peer = rooms.peerOf(m.deviceId);
-      if (peer) send(sockets.get(peer), { t: 'peer-joined' });
-      // Si venía de otra sala, su compañero ya no tiene con quién hablar
-      if (oldPeer && oldPeer !== peer) send(sockets.get(oldPeer), { t: 'peer-left' });
+      if (result === 'pending') {
+        // Un dispositivo nuevo no entra hasta que el creador lo acepta
+        send(ws, { t: 'pending' });
+        const creator = rooms.pendingFor(m.deviceId);
+        if (creator) send(sockets.get(creator), { t: 'join-request' });
+        if (oldPeer) send(sockets.get(oldPeer), { t: 'peer-left' });
+      } else {
+        send(ws, { t: 'joined' });
+        const peer = rooms.peerOf(m.deviceId);
+        if (peer) send(sockets.get(peer), { t: 'peer-joined', direct: m.direct === true });
+        // Si venía de otra sala, su compañero ya no tiene con quién hablar
+        if (oldPeer && oldPeer !== peer) send(sockets.get(oldPeer), { t: 'peer-left' });
+      }
+    } else if (m.t === 'accept' && deviceId && sockets.get(deviceId) === ws) {
+      const joiner = rooms.accept(deviceId);
+      if (joiner) {
+        send(sockets.get(joiner), { t: 'joined' });
+        send(ws, { t: 'peer-joined' });
+      }
+    } else if (m.t === 'reject' && deviceId && sockets.get(deviceId) === ws) {
+      const joiner = rooms.reject(deviceId);
+      if (joiner) send(sockets.get(joiner), { t: 'error', code: 'rejected' });
     } else if (m.t === 'signal' && deviceId && sockets.get(deviceId) === ws) {
       const peer = rooms.peerOf(deviceId);
       if (peer) send(sockets.get(peer), { t: 'signal', data: m.data });
@@ -294,6 +319,11 @@ setInterval(() => {
 setInterval(() => {
   rooms.sweep();
   sweepFailures();
+  // Solicitudes de unión sin respuesta del creador
+  for (const { creator, joiner } of rooms.expirePending()) {
+    send(sockets.get(joiner), { t: 'error', code: 'no_answer' });
+    send(sockets.get(creator), { t: 'join-cancelled' });
+  }
 }, 15_000).unref();
 
 // Aviso genérico (solo un número) si se rechazaron peticiones en el último minuto

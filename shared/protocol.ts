@@ -1,16 +1,26 @@
 // Cliente ↔ servidor
 export type ToServer =
   | { t: 'create'; deviceId: string }
-  | { t: 'join'; token: string; deviceId: string }
+  // direct: quien se reúne con una sala ya emparejada dice si su canal directo sigue abierto (así no se reempareja)
+  | { t: 'join'; token: string; deviceId: string; direct?: boolean }
+  // El creador responde a la solicitud de un dispositivo que quiere unirse
+  | { t: 'accept' }
+  | { t: 'reject' }
   | { t: 'signal'; data: unknown }
   | { t: 'leave' };
 
-export type ServerError = 'not_found' | 'full' | 'expired' | 'rate_limited';
+export type ServerError = 'not_found' | 'full' | 'expired' | 'rate_limited' | 'rejected' | 'no_answer';
 
 export type FromServer =
   | { t: 'created'; token: string }
+  // Al solicitante: el creador debe aceptarlo antes de emparejarse (`joined` llega solo si acepta)
+  | { t: 'pending' }
+  // Al creador: un dispositivo quiere unirse; `join-cancelled` si se arrepiente o no se contesta a tiempo
+  | { t: 'join-request' }
+  | { t: 'join-cancelled' }
   | { t: 'joined' }
-  | { t: 'peer-joined' }
+  // direct: el otro dispositivo se reunió con su canal directo aún abierto
+  | { t: 'peer-joined'; direct?: boolean }
   | { t: 'peer-left' }
   | { t: 'signal'; data: unknown }
   | { t: 'error'; code: ServerError };
