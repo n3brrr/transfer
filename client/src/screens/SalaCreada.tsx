@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatToken } from '../../../shared/token';
+import { copiarTexto } from '../ui/portapapeles';
 
 const EXPIRA_MS = 5 * 60_000;
 
@@ -26,32 +27,6 @@ function Puntos() {
       <span>.</span>
     </span>
   );
-}
-
-// Copia con la API moderna y, si no existe (páginas sin HTTPS), con un textarea oculto
-async function copiarTexto(texto: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(texto);
-      return true;
-    }
-  } catch {
-    // se prueba el respaldo
-  }
-  const area = document.createElement('textarea');
-  area.value = texto;
-  area.setAttribute('readonly', '');
-  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
-  document.body.appendChild(area);
-  area.select();
-  area.setSelectionRange(0, texto.length);
-  try {
-    return document.execCommand('copy');
-  } catch {
-    return false;
-  } finally {
-    area.remove();
-  }
 }
 
 // Pantalla entre el emparejamiento y la sala (la conexión directa se está abriendo)

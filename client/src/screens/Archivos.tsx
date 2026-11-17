@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Sala } from '../state/sala';
 import { formatSize, isMobile, memoryNotice } from '../files/transfer';
 import { isDangerousName } from '../files/validar';
-import { Check, FileArchive, FileText, Film, Image as ImageIcon, Music, Trash2, type LucideIcon } from 'lucide-react';
+import { Check, FileArchive, FileText, Film, Image as ImageIcon, Music, Smartphone, Trash2, Upload, type LucideIcon } from 'lucide-react';
 
 const movil = isMobile();
 const MAX_SOLTADOS = 500;
@@ -240,18 +240,7 @@ export default function Archivos({ sala }: { sala: Sala }) {
         onClick={() => input.current?.click()}
         className={`mb-1 flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center text-base font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta ${encima ? 'border-acento-texto bg-superficie text-acento-texto' : 'border-borde bg-superficie/60 hover:bg-superficie'}`}
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className={`size-9 text-acento transition-transform duration-200 ${encima ? '-translate-y-1.5 scale-125' : ''}`}
-        >
-          <path d="M12 16V5M7 10l5-5 5 5M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
-        </svg>
+        <Upload strokeWidth={1.8} aria-hidden="true" className={`size-9 text-acento transition-transform duration-200 ${encima ? '-translate-y-1.5 scale-125' : ''}`} />
         {leyendo ? 'Leyendo archivos…' : movil ? 'Toca para añadir archivos' : encima ? 'Suéltalos para añadirlos' : 'Suelta archivos aquí o pulsa para añadir'}
       </button>
       <input
@@ -278,19 +267,7 @@ export default function Archivos({ sala }: { sala: Sala }) {
 
       {mostrarConsejo && (
         <p className="mb-3 flex items-start gap-2 rounded-xl bg-superficie px-3 py-2 text-sm">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 text-acento"
-          >
-            <rect x="7" y="2" width="10" height="20" rx="2" />
-            <path d="M11 18h2" />
-          </svg>
+          <Smartphone strokeWidth={1.8} aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-acento" />
           Mantén la pantalla encendida mientras dura la transferencia
         </p>
       )}

@@ -3,6 +3,8 @@ import { Check, ClipboardPaste, Copy, Eraser, Trash2 } from 'lucide-react';
 import { FORMATOS, nombreFormato } from '../files/formatos';
 import { detectar, resaltar } from '../files/resaltado';
 import type { Sala, TextItem } from '../state/sala';
+import { formatSize } from '../files/transfer';
+import { copiarTexto } from '../ui/portapapeles';
 
 const MAX_BYTES = 1024 * 1024;
 const AVISO_BYTES = 800 * 1024; // a partir de aquí se avisa de que se acerca el límite
@@ -15,39 +17,6 @@ const boton = `h-11 rounded-lg px-4 text-sm font-medium ${foco}`;
 const secundario = `${boton} border-2 border-acento text-tinta`;
 const herramienta = `${boton} inline-flex items-center gap-1.5 border-2 border-borde text-tinta transition hover:border-acento hover:bg-superficie active:scale-95`;
 const campo = `w-full rounded-lg border-2 border-borde bg-superficie px-3 text-base text-tinta ${foco}`;
-
-function tamano(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toLocaleString('es', { maximumFractionDigits: 2 })} MB`;
-}
-
-// Devuelve false si no se pudo copiar de ninguna forma
-async function copiar(texto: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(texto);
-    return true;
-  } catch {
-    // Sin Clipboard API (página sin HTTPS): método antiguo
-    const previo = document.activeElement as HTMLElement | null;
-    const area = document.createElement('textarea');
-    area.value = texto;
-    area.setAttribute('readonly', '');
-    area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
-    document.body.appendChild(area);
-    area.select();
-    area.setSelectionRange(0, texto.length);
-    let ok = false;
-    try {
-      ok = document.execCommand('copy');
-    } catch {
-      ok = false;
-    }
-    area.remove();
-    previo?.focus();
-    return ok;
-  }
-}
 
 type FragmentoProps = {
   item: TextItem;
@@ -71,7 +40,7 @@ function Fragmento({ item, editando, onEditar, onQuitar }: FragmentoProps) {
   const nombre = nombreFormato(item.format);
 
   async function alCopiar() {
-    const ok = await copiar(item.content);
+    const ok = await copiarTexto(item.content);
     setCopia(ok ? 'ok' : 'error');
     clearTimeout(temporizador.current);
     temporizador.current = window.setTimeout(() => setCopia(null), 2000);
@@ -312,7 +281,7 @@ export default function Texto({ sala }: { sala: Sala }) {
           </p>
           {!vacio && (
             <p className={demasiado || cerca ? 'font-medium' : 'opacity-75'}>
-              {tamano(bytes)} de 1 MB
+              {formatSize(bytes)} de 1 MB
             </p>
           )}
         </div>
