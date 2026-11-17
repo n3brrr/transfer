@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PeerMsg } from '../../../shared/protocol';
 import { randomId } from '../../../shared/token';
+import { replayEarly } from '../net/peer';
 import { sanitizeFormat, sanitizeMime, sanitizeName } from '../files/validar';
 import {
   AvisoError,
@@ -573,6 +574,7 @@ export function useSala(channel: RTCDataChannel) {
     channel.addEventListener('open', onOpen);
     channel.addEventListener('close', onClose);
     channel.addEventListener('message', onMessage);
+    replayEarly(channel, onMessage); // lo que el otro dispositivo envió antes de que esta pantalla escuchara
 
     // Canal nuevo (o primera vez): el otro dispositivo necesita ver lo mío
     for (const f of filesRef.current) {

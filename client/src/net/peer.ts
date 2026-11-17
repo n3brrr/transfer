@@ -11,6 +11,17 @@ const ICE_SERVERS: RTCIceServer[] = [
 // Tiempo que se espera a que una conexión en "disconnected" se recupere sola
 const DISCONNECTED_MS = 5000;
 
+// Mensajes que llegan por el canal antes de que la pantalla de la sala se monte y escuche: se guardan y se reproducen en replayEarly
+const MAX_TEMPRANOS = 500;
+const tempranos = new WeakMap<RTCDataChannel, MessageEvent[]>();
+
+// Entrega a `handler`, en orden, lo recibido desde que se abrió el canal. Llamar justo después de añadir el oyente de mensajes.
+export function replayEarly(ch: RTCDataChannel, handler: (e: MessageEvent) => void): void {
+  const guardados = tempranos.get(ch);
+  tempranos.delete(ch); // desde ahora los mensajes solo llegan por el oyente normal
+  guardados?.forEach(handler);
+}
+
 type SignalData = { sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
 
 type Opciones = {
@@ -75,6 +86,11 @@ export function connectPeer(sig: Signaling, initiator: boolean, { signal, pendie
     function bind(ch: RTCDataChannel) {
       canal = ch;
       ch.binaryType = 'arraybuffer';
+      tempranos.set(ch, []);
+      ch.addEventListener('message', (e) => {
+        const guardados = tempranos.get(ch);
+        if (guardados && guardados.length < MAX_TEMPRANOS) guardados.push(e);
+      });
       ch.addEventListener('close', () => (settled ? limpiar() : fallar(new Error('El canal se cerró'))));
       if (ch.readyState === 'open') abierto(ch);
       else ch.addEventListener('open', () => abierto(ch), { once: true });
