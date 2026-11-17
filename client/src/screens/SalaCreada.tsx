@@ -5,6 +5,9 @@ const EXPIRA_MS = 5 * 60_000;
 
 type Props = {
   token: string;
+  solicitud: boolean; // un dispositivo pide unirse y hay que aceptarlo o rechazarlo
+  onAceptar(): void;
+  onRechazar(): void;
   onCancelar(): void;
   onCrearOtro(): void;
 };
@@ -87,7 +90,7 @@ export function Conectando({ estado, onReintentar, onCancelar }: ConectandoProps
   );
 }
 
-export default function SalaCreada({ token, onCancelar, onCrearOtro }: Props) {
+export default function SalaCreada({ token, solicitud, onAceptar, onRechazar, onCancelar, onCrearOtro }: Props) {
   const [caducado, setCaducado] = useState(false);
   const [copiado, setCopiado] = useState<'si' | 'no' | null>(null);
   const aviso = useRef<number | undefined>(undefined);
@@ -109,6 +112,20 @@ export default function SalaCreada({ token, onCancelar, onCrearOtro }: Props) {
   return (
     <main className="pantalla text-center">
       <div className="tarjeta flex flex-col items-center gap-4">
+        {solicitud && (
+          <div role="alert" className="w-full rounded-xl border-2 border-acento-texto bg-superficie p-3 text-left">
+            <p className="font-semibold">Un dispositivo quiere unirse</p>
+            <p className="mb-3 text-sm text-suave">Acepta solo si lo estás uniendo tú ahora mismo.</p>
+            <div className="flex gap-2">
+              <button className="btn btn-primario flex-1" onClick={onAceptar}>
+                Aceptar
+              </button>
+              <button className="btn btn-secundario flex-1" onClick={onRechazar}>
+                Rechazar
+              </button>
+            </div>
+          </div>
+        )}
         {caducado ? (
           <>
             <p role="status" className="text-lg">
