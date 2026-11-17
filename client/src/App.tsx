@@ -5,6 +5,7 @@ import { connectPeer } from './net/peer';
 import { clearToken, connectSignaling, getDeviceId, loadToken, saveToken, type Signaling } from './net/signaling';
 import { useSala } from './state/sala';
 import Header, { type Pestana } from './ui/Header';
+import { useAvisoTitulo } from './ui/useAvisoTitulo';
 import Archivos from './screens/Archivos';
 import Inicio from './screens/Inicio';
 import SalaCreada, { Conectando } from './screens/SalaCreada';
@@ -36,6 +37,7 @@ const MENSAJES: Record<string, string> = {
 function Sala({ channel, onSalir }: { channel: RTCDataChannel; onSalir(): void }) {
   const sala = useSala(channel);
   const [pestana, setPestana] = useState<Pestana>('archivos');
+  useAvisoTitulo(sala.files.filter((f) => !f.mine).length + sala.texts.filter((t) => !t.mine).length);
 
   // Salir cierra la sala para los dos: si hay algo transfiriéndose, se pide confirmación
   function salir() {
