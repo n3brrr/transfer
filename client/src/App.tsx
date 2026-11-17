@@ -35,9 +35,15 @@ function Sala({ channel, onSalir }: { channel: RTCDataChannel; onSalir(): void }
   const sala = useSala(channel);
   const [pestana, setPestana] = useState<Pestana>('archivos');
 
+  // Salir cierra la sala para los dos: si hay algo transfiriéndose, se pide confirmación
+  function salir() {
+    if (Object.keys(sala.transfers).length > 0 && !confirm('Hay transferencias en curso y se cancelarán. ¿Salir de la sala?')) return;
+    onSalir();
+  }
+
   return (
     <div className="min-h-dvh">
-      <Header pestana={pestana} onPestana={setPestana} connected={sala.connected} onSalir={onSalir} />
+      <Header pestana={pestana} onPestana={setPestana} connected={sala.connected} onSalir={salir} />
       <main className="gutter mx-auto w-full max-w-2xl pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {/* Las dos pestañas siguen montadas para no perder lo que se esté escribiendo */}
         <div id="panel-archivos" role="tabpanel" aria-labelledby="tab-archivos" hidden={pestana !== 'archivos'}>
