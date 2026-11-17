@@ -1,5 +1,6 @@
 # --- Base: Node + pnpm (se comparte entre etapas y se cachea) ---
-FROM node:24-slim AS base
+# Imagen fijada por resumen (actualizar con: docker buildx imagetools inspect node:24-slim)
+FROM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS base
 WORKDIR /app
 RUN npm install -g pnpm@12.5.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -15,7 +16,7 @@ COPY . .
 RUN pnpm build && pnpm build:server
 
 # --- Imagen final: solo lo necesario para ejecutar, sin pnpm ni código fuente ---
-FROM node:24-slim
+FROM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
 WORKDIR /app
 ENV NODE_ENV=production PORT=8080
 
