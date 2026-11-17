@@ -121,6 +121,7 @@ Cada archivo del proyecto, la tarea que lo crea y las que lo modifican. Si un ar
 | `client/src/files/validar.ts` | — (segunda ronda) | — |
 | `client/src/files/formatos.ts` | — (formatos de texto) | — |
 | `client/public/favicon.svg` | — (segunda ronda) | — |
+| `docker-compose.local.yml` | — (cuarta ronda: modo rápido local) | — |
 | `client/src/files/resaltado.ts` | — (cuarta ronda: highlight.js y detección de formato; solo lo carga la pestaña Texto) | — |
 | `client/src/files/miniatura.ts` | — (cuarta ronda: miniaturas JPEG de las imágenes) | — |
 | `client/src/files/qr.ts` | — (cuarta ronda: generador de códigos QR sin dependencias) | — |
@@ -475,6 +476,7 @@ function receiver(expectedSize: number, write: (c: ArrayBuffer) => Promise<void>
   - **Docker:** imágenes por `@sha256:`, `caddy-dns/duckdns@v0.5.0` (la imagen de Caddy ya compila), `encode zstd gzip`, `BIND_IP` para publicar el 443 solo en la IP de la LAN y `react`, `react-dom`, `highlight.js` y `lucide-react` en `devDependencies` (la imagen final lleva solo `ws`).
   - **Cliente:** `files/resaltado.ts` (nuevo) separa highlight.js de `formatos.ts` y la pestaña Texto se carga aparte (`React.lazy`): el bundle principal baja de 402 KB a unos 285 KB. `state/mensajes.ts` (nuevo) contiene `parseMsg`; `ui/portapapeles.ts` unifica el copiado; confirmación al salir con transferencias en curso; aviso de guardado en memoria antes de descargar archivos grandes (`memoryNotice`).
   - **Funciones nuevas:** velocidad y tiempo restante; **Descargar todos** con una sola carpeta (`showDirectoryPicker`, sin pisar archivos existentes); miniaturas de imágenes (`files/miniatura.ts`, JPEG de 96 px en `file-add.thumb`, validado con `sanitizeThumb`); nombre editable del dispositivo (`hello`, `state/nombre.ts`, `localStorage`); botón **Vaciar mis textos**; contador en el título con la pestaña oculta; QR de la sala (`files/qr.ts`, generador propio sin dependencias, versiones 1 a 7, nivel M; el enlace `/#CÓDIGO` se une directamente).
+  - **Modo rápido local:** `docker-compose.local.yml` (un solo contenedor, puerto 8080, sin Caddy ni DuckDNS ni `.env`) para usarla bajo demanda solo en la LAN. El modo con DuckDNS y HTTPS sigue disponible. Se descartó desplegarla en `pc1-personal` y en Vercel (no admite WebSockets ni procesos de larga vida).
   - **Descartado a propósito:** guardado en streaming por Service Worker para móviles (obligaría a relajar `worker-src` en la CSP y no es fiable en iOS), opción de quitar los STUN públicos y la Fase 2.
 - Reconectar tras recargar: el token de la sala se guarda en `sessionStorage` y, al abrir la app, se intenta volver a esa sala.
 

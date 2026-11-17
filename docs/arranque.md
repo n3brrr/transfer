@@ -4,6 +4,30 @@ Todo se hace **en el PC de casa**. En los otros dispositivos (móvil, otro PC) n
 
 ---
 
+## MODO RÁPIDO · Solo en tu red, bajo demanda (sin dominio ni HTTPS)
+
+Es lo más simple si solo la usas dentro de casa: un solo contenedor que arrancas cuando lo necesitas y que desaparece al pararlo. No guarda nada. No hace falta DuckDNS, `.env` ni la PARTE 1.
+
+1. Abre **Docker Desktop** y espera a que ponga **Engine running**.
+2. En PowerShell, dentro de la carpeta del proyecto:
+   ```
+   docker compose -f docker-compose.local.yml up --build
+   ```
+   La primera vez tarda unos minutos. Cuando salga `Transferir en http://localhost:8080`, ya está lista.
+3. Averigua la IP de tu PC (`ipconfig` → **Dirección IPv4**, por ejemplo `192.168.1.35`).
+4. **Solo la primera vez**, abre el puerto en el firewall (PowerShell como administrador). Tu red de casa tiene que estar como **Privada**:
+   ```
+   New-NetFirewallRule -DisplayName "Transferir (local)" -Direction Inbound -Protocol TCP -LocalPort 8080 -Profile Private -Action Allow
+   ```
+5. Abre `http://192.168.1.35:8080` (con tu IP) en el PC y en el móvil, **conectados a la misma Wi-Fi**.
+6. Para parar: `Ctrl+C` en esa ventana. Se borra el contenedor y todo lo de la sesión.
+
+Qué cambia sin HTTPS: en el móvil no están el botón **Pegar** ni el aviso de pantalla encendida; copiar, enviar archivos y textos funcionan igual. Los archivos y textos van cifrados de un dispositivo a otro por WebRTC aunque la página use HTTP.
+
+Para publicar el puerto solo en la IP de tu PC, define antes `$env:BIND_IP="192.168.1.35"`. No lo abras en el router ni uses DMZ o UPnP: es solo para tu red. Para HTTPS o el dominio de DuckDNS, sigue con la PARTE 1.
+
+---
+
 ## PARTE 1 · Primera vez (se hace una sola vez)
 
 ### 1. Pasar el proyecto al PC de casa

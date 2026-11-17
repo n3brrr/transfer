@@ -42,6 +42,7 @@ El servidor solo ve el saludo WebRTC (SDP, candidatos ICE, huellas DTLS); nunca 
 | Baja | Los códigos fallidos distinguen `not_found`/`full`/`expired`: confirma si un código existe | Aceptado | `server/rooms.ts` |
 | Baja | `sessionStorage` guarda el código de sala y el `deviceId` (quien lo robe puede volver a una sala emparejada) | Aceptado | `net/signaling.ts` |
 | Baja | `pnpm audit` | Sin vulnerabilidades conocidas | `pnpm-lock.yaml` |
+| Baja | Modo rápido (`docker-compose.local.yml`): la página y la señalización van por HTTP dentro de la LAN, así que quien esté en la red puede leer el código y el saludo WebRTC | Aceptado: es solo LAN, el creador acepta a cada dispositivo, y los datos van cifrados por DTLS aunque la página sea HTTP. Para HTTPS, usar el modo con DuckDNS | `docker-compose.local.yml`, `docs/arranque.md` |
 | Baja | Miniatura del otro dispositivo (`thumb`): el navegador decodifica un JPEG que manda el par | Aceptado; solo se admite una data URL `image/jpeg` con base64 estricto y 12.000 caracteres como máximo | `files/validar.ts` (`sanitizeThumb`), `files/miniatura.ts` |
 | Baja | Nombre de dispositivo (`hello`) del otro lado: texto libre | Corregido: se limpia (sin invisibles ni saltos, 30 caracteres) y React lo pinta como texto | `files/validar.ts` (`sanitizeDeviceName`) |
 | Baja | El enlace del QR lleva el código en `#fragmento` | Aceptado: el navegador no lo envía al servidor ni en `Referer`, se borra de la barra al abrirlo y el creador debe aceptar igualmente | `App.tsx`, `files/qr.ts` |
