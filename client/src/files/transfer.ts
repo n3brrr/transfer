@@ -63,6 +63,15 @@ export function formatSize(bytes: number): string {
   return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[i]}`;
 }
 
+// Tiempo restante en pocas palabras: «12 s», «3 min», «1 h 05 min»
+export function formatEta(seconds: number): string {
+  const s = Math.max(1, Math.round(seconds));
+  if (s < 60) return `${s} s`;
+  const min = Math.round(s / 60);
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min`;
+}
+
 export function isMobile(): boolean {
   const mobile = (navigator as unknown as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile;
   if (typeof mobile === 'boolean') return mobile;

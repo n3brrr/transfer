@@ -19,7 +19,8 @@ import {
 export type FileItem = { id: string; name: string; size: number; mime: string; mine: boolean; available: boolean };
 export type TextItem = { id: string; format: string; content: string; mine: boolean };
 // Un archivo que está subiendo o bajando (clave = id del archivo). `paused`: descarga cortada que continuará si el otro vuelve.
-export type Transfer = { direction: 'in' | 'out'; fraction: number; state: 'queued' | 'active' | 'paused' };
+// `rate`: fracción del archivo que avanza por segundo (media suavizada); sirve para la velocidad y el tiempo restante.
+export type Transfer = { direction: 'in' | 'out'; fraction: number; state: 'queued' | 'active' | 'paused'; rate?: number };
 export type Sala = ReturnType<typeof useSala>;
 
 // Más límites a lo que puede mandar el otro dispositivo (entrada no fiable); los de cada mensaje, en mensajes.ts
@@ -27,6 +28,7 @@ const MAX_REMOTE_FILES = 1000;
 const MAX_REMOTE_TEXTS = 100;
 const MAX_REMOTE_TEXT_CHARS = 20_000_000; // entre todos los textos recibidos
 const MAX_INCOMING_TEXTS = 20; // textos a medio recibir a la vez
+const RATE_SAMPLE_MS = 500; // cada cuánto se mide la velocidad
 const REDRAW_MS = 100; // el progreso se redibuja como mucho cada tanto
 const PING_MS = 5000; // latido: un ping cada tanto
 const DEAD_MS = 15_000; // sin ninguna señal del otro lado durante tanto tiempo, la conexión se da por muerta
@@ -82,6 +84,7 @@ export function useSala(channel: RTCDataChannel) {
 
   // Transfers: la fuente de verdad es el ref; el estado de React se actualiza como mucho cada REDRAW_MS
   const tr = useRef<Record<string, Transfer>>({});
+  const samples = useRef<Record<string, { at: number; fraction: number }>>({}); // última medida de velocidad de cada transferencia
   const lastDraw = useRef(0);
   const drawTimer = useRef(0);
   const releaseAwake = useRef<(() => void) | null>(null);
@@ -108,9 +111,11 @@ export function useSala(channel: RTCDataChannel) {
   };
   const setTransfer = (id: string, t: Transfer) => {
     tr.current[id] = t;
+    delete samples.current[id]; // cambio de estado: la velocidad se vuelve a medir desde aquí
     changed();
   };
   const dropTransfer = (id: string) => {
+    delete samples.current[id];
     if (id in tr.current) {
       delete tr.current[id];
       changed();
@@ -119,7 +124,16 @@ export function useSala(channel: RTCDataChannel) {
   const setFraction = (id: string, fraction: number) => {
     const t = tr.current[id];
     if (!t) return;
-    tr.current[id] = { ...t, fraction };
+    let rate = t.rate;
+    const now = performance.now();
+    const prev = samples.current[id];
+    if (!prev) samples.current[id] = { at: now, fraction };
+    else if (now - prev.at >= RATE_SAMPLE_MS) {
+      const instant = (fraction - prev.fraction) / ((now - prev.at) / 1000);
+      rate = rate === undefined ? instant : rate * 0.7 + instant * 0.3;
+      samples.current[id] = { at: now, fraction };
+    }
+    tr.current[id] = { ...t, fraction, rate };
     if (!drawTimer.current) drawTimer.current = window.setTimeout(draw, Math.max(0, REDRAW_MS - (performance.now() - lastDraw.current)));
   };
 

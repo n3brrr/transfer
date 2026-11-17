@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Sala } from '../state/sala';
-import { formatSize, isMobile, memoryNotice } from '../files/transfer';
+import { formatEta, formatSize, isMobile, memoryNotice } from '../files/transfer';
 import { isDangerousName } from '../files/validar';
 import { Check, FileArchive, FileText, Film, Image as ImageIcon, Music, Smartphone, Trash2, Upload, type LucideIcon } from 'lucide-react';
 
@@ -51,6 +51,12 @@ function estado(t: Transfer): string {
   if (t.state === 'queued') return 'En cola';
   if (t.state === 'paused') return `Pausada · ${porcentaje}`;
   return t.direction === 'out' ? `Enviando… ${porcentaje}` : `Descargando… ${porcentaje}`;
+}
+
+// «5,4 MB/s · quedan 12 s» mientras hay medida fiable; null si aún no la hay
+function velocidad(t: Transfer, size: number): string | null {
+  if (t.state !== 'active' || !t.rate || t.rate <= 0 || !size) return null;
+  return `${formatSize(t.rate * size)}/s · quedan ${formatEta((1 - t.fraction) / t.rate)}`;
 }
 
 // Cuando una transferencia termina bien (no la cancelaron, no falló, el archivo sigue en la lista)
@@ -305,7 +311,10 @@ export default function Archivos({ sala }: { sala: Sala }) {
                     )}
                     {t && (
                       <div className="mt-2">
-                        <p className="mb-1 text-xs font-medium">{estado(t)}</p>
+                        <p className="mb-1 text-xs font-medium">
+                          {estado(t)}
+                          {velocidad(t, f.size) && <span className="font-normal text-suave"> · {velocidad(t, f.size)}</span>}
+                        </p>
                         {t.state !== 'queued' && (
                           <div
                             role="progressbar"
