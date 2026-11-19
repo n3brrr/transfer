@@ -139,15 +139,16 @@ Detrás de Caddy, con un dominio de [DuckDNS](https://www.duckdns.org/) y acceso
 
 ## Scripts
 
-| Comando                  | Descripción                                                               |
-| ------------------------ | ------------------------------------------------------------------------- |
-| `pnpm dev:server`        | Servidor en desarrollo con recarga automática (`tsx watch`), puerto 8080. |
-| `pnpm dev:client`        | Servidor de desarrollo de Vite con proxy de `/ws` al servidor.            |
-| `pnpm build`             | Compila la web en `client/dist`.                                          |
-| `pnpm build:server`      | Compila el servidor en `dist-server/` (usado por Docker).                 |
-| `pnpm start`             | Ejecuta el servidor sirviendo `client/dist` (tras `pnpm build`).          |
-| `pnpm test`              | Ejecuta Vitest. Los tests están aplazados por ahora.                      |
-| `pnpm exec tsc --noEmit` | Comprueba los tipos de todo el proyecto.                                  |
+| Comando             | Descripción                                                               |
+| ------------------- | ------------------------------------------------------------------------- |
+| `pnpm dev:server`   | Servidor en desarrollo con recarga automática (`tsx watch`), puerto 8080. |
+| `pnpm dev:client`   | Servidor de desarrollo de Vite con proxy de `/ws` al servidor.            |
+| `pnpm build`        | Compila la web en `client/dist`.                                          |
+| `pnpm build:server` | Compila el servidor en `dist-server/` (usado por Docker).                 |
+| `pnpm start`        | Ejecuta el servidor sirviendo `client/dist` (tras `pnpm build`).          |
+| `pnpm test`         | Ejecuta Vitest. Los tests están aplazados por ahora.                      |
+| `pnpm typecheck`    | Comprueba los tipos de todo el proyecto (`tsc --noEmit`).                 |
+| `pnpm lint`         | Comprueba el formato con Prettier. Es lo que ejecuta el CI en cada PR.    |
 
 ## Seguridad
 
