@@ -1,5 +1,5 @@
-import type { FromServer } from '../../../shared/protocol'
-import type { Signaling } from './signaling'
+import type { FromServer } from '../../../shared/protocolo/protocol'
+import type { Signaling } from './senalizacion'
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },

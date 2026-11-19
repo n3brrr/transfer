@@ -1,5 +1,5 @@
-import { isMobile } from '../files/transfer'
-import { sanitizeDeviceName } from '../files/validar'
+import { isMobile } from '../transferencia/transferencia'
+import { sanitizeDeviceName } from '../transferencia/validar-entrada'
 
 const KEY = 'transferir.nombre'
 

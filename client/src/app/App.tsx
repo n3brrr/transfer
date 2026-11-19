@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import type { FromServer, PeerMsg } from '../../shared/protocol'
-import { isValidToken, sanitizeToken } from '../../shared/token'
-import { connectPeer } from './net/peer'
+import type { FromServer, PeerMsg } from '../../../shared/protocolo/protocol'
+import { isValidToken, sanitizeToken } from '../../../shared/token/token'
+import { connectPeer } from '../sala/conexion-webrtc'
 import {
   clearToken,
   connectSignaling,
@@ -9,15 +9,15 @@ import {
   loadToken,
   saveToken,
   type Signaling,
-} from './net/signaling'
-import { useSala } from './state/sala'
-import Header, { type Pestana } from './ui/Header'
-import { useAvisoTitulo } from './ui/useAvisoTitulo'
-import Archivos from './screens/Archivos'
-import Inicio from './screens/Inicio'
-import SalaCreada, { Conectando } from './screens/SalaCreada'
+} from '../sala/senalizacion'
+import { useSala } from '../sala/use-sala'
+import Header, { type Pestana } from './CabeceraPestanas'
+import { useAvisoTitulo } from './use-aviso-titulo'
+import Archivos from '../archivos/PantallaArchivos'
+import Inicio from '../sala/PantallaInicio'
+import SalaCreada, { Conectando } from '../sala/PantallaSalaCreada'
 // La pestaña Texto lleva highlight.js: se descarga aparte para que Inicio cargue más rápido
-const Texto = lazy(() => import('./screens/Texto'))
+const Texto = lazy(() => import('../texto/PantallaTexto'))
 
 type Pantalla = 'inicio' | 'creada' | 'conectando' | 'sala'
 type Estado = 'conectando' | 'reconectando' | 'fallo'

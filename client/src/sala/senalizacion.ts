@@ -1,5 +1,5 @@
-import type { FromServer, ToServer } from '../../../shared/protocol'
-import { randomId } from '../../../shared/token'
+import type { FromServer, ToServer } from '../../../shared/protocolo/protocol'
+import { randomId } from '../../../shared/token/token'
 
 export type Signaling = {
   send(m: ToServer): void

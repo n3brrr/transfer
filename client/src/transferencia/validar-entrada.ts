@@ -92,7 +92,7 @@ export function isDangerousName(name: string): boolean {
   return ext !== undefined && DANGEROUS.has(ext)
 }
 
-// Mismos formatos que el desplegable de Texto (files/formatos.ts)
+// Mismos formatos que el desplegable de Texto (transferencia/formatos.ts)
 const TEXT_FORMATS = FORMATO_IDS
 
 export function sanitizeFormat(raw: unknown): string {

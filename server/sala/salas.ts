@@ -1,4 +1,4 @@
-import { newToken, normalizeToken } from '../shared/token'
+import { newToken, normalizeToken } from '../../shared/token/token'
 
 const EXPIRE_MS = 5 * 60_000 // token sin usar
 const GRACE_MS = 2 * 60_000 // espera a un dispositivo caído

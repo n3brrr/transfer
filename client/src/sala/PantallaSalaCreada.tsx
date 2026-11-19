@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatToken } from '../../../shared/token'
-import { copiarTexto } from '../ui/portapapeles'
-import QrCodigo from '../ui/QrCodigo'
+import { formatToken } from '../../../shared/token/token'
+import { copiarTexto } from '../portapapeles/portapapeles'
+import QrCodigo from './QrCodigo'
 
 const EXPIRA_MS = 5 * 60_000
 

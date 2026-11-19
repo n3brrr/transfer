@@ -46,25 +46,28 @@ transferir/
   tsconfig.json
   vitest.config.ts
   shared/
-    protocol.ts           tipos de mensajes (servidor y entre dispositivos)
-    token.ts              generar y normalizar tokens
+    protocolo/protocol.ts tipos de mensajes (servidor y entre dispositivos)
+    token/token.ts        generar y normalizar tokens
   server/
-    rooms.ts              salas en memoria: crear, unirse, salir, caducar
-    limiter.ts            límite de intentos por IP
     index.ts              HTTP (sirve client/dist) + WebSocket
+    sala/salas.ts         salas en memoria: crear, unirse, salir, caducar
+    sala/limite-intentos.ts  límite de intentos por IP
   client/
     index.html
     vite.config.ts
     src/
-      main.tsx, App.tsx   arranque y navegación entre pantallas
-      index.css           Tailwind + colores
-      net/signaling.ts    cliente WebSocket
-      net/peer.ts         conexión WebRTC y canal de datos
-      files/chunker.ts    trocear y recomponer archivos
-      files/transfer.ts   enviar / recibir por el canal
-      state/sala.ts       lista compartida (archivos y textos)
-      ui/Header.tsx       pestañas + estado de conexión
-      screens/Inicio.tsx, SalaCreada.tsx, Archivos.tsx, Texto.tsx
+      app/main.tsx, App.tsx arranque y navegación entre pantallas
+      app/estilos-globales.css  Tailwind + colores
+      app/CabeceraPestanas.tsx  pestañas + estado de conexión
+      app/use-aviso-titulo.ts
+      sala/senalizacion.ts      cliente WebSocket
+      sala/conexion-webrtc.ts   conexión WebRTC y canal de datos
+      sala/use-sala.ts          lista compartida (archivos y textos)
+      sala/PantallaInicio.tsx, PantallaSalaCreada.tsx, QrCodigo.tsx
+      archivos/PantallaArchivos.tsx
+      texto/PantallaTexto.tsx
+      transferencia/trocear-y-recomponer.ts  trocear y recomponer archivos
+      transferencia/transferencia.ts         enviar / recibir por el canal
   tests/
     rooms.test.ts
     chunker.test.ts
@@ -80,59 +83,59 @@ transferir/
 
 Cada archivo del proyecto, la tarea que lo crea y las que lo modifican. Si un archivo no está aquí, no se crea sin preguntar. `docs/plan.md` lo modifican todas las tareas (casillas).
 
-| Archivo                             | Lo crea                                                                               | Lo modifican            |
-| ----------------------------------- | ------------------------------------------------------------------------------------- | ----------------------- |
-| `.gitignore`                        | 0.1                                                                                   | —                       |
-| `.gitattributes`                    | 0.1                                                                                   | —                       |
-| `package.json`                      | 0.1                                                                                   | —                       |
-| `pnpm-lock.yaml`                    | 0.1 (pnpm)                                                                            | —                       |
-| `tsconfig.json`                     | 0.1                                                                                   | —                       |
-| `vitest.config.ts`                  | 0.1                                                                                   | —                       |
-| `client/index.html`                 | 0.1                                                                                   | —                       |
-| `client/vite.config.ts`             | 0.1                                                                                   | —                       |
-| `client/src/main.tsx`               | 0.1                                                                                   | —                       |
-| `client/src/App.tsx`                | 0.1                                                                                   | 1.2, 2.4, 3.1, 3.4, 4.1 |
-| `client/src/index.css`              | 0.1                                                                                   | —                       |
-| `shared/protocol.ts`                | 0.2                                                                                   | —                       |
-| `server/index.ts`                   | 0.3                                                                                   | 2.2                     |
-| `shared/token.ts`                   | 1.1                                                                                   | —                       |
-| `client/src/screens/Inicio.tsx`     | 1.2                                                                                   | 2.4                     |
-| `server/rooms.ts`                   | 2.1                                                                                   | —                       |
-| `server/limiter.ts`                 | 2.1                                                                                   | —                       |
-| `tests/rooms.test.ts`               | 2.1                                                                                   | —                       |
-| `client/src/net/signaling.ts`       | 2.2                                                                                   | —                       |
-| `client/src/net/peer.ts`            | 2.3                                                                                   | —                       |
-| `client/src/screens/SalaCreada.tsx` | 2.4                                                                                   | —                       |
-| `client/src/ui/Header.tsx`          | 3.1                                                                                   | —                       |
-| `client/src/state/sala.ts`          | 3.1                                                                                   | 3.3                     |
-| `client/src/files/chunker.ts`       | 3.2                                                                                   | —                       |
-| `tests/chunker.test.ts`             | 3.2                                                                                   | —                       |
-| `client/src/files/transfer.ts`      | 3.3                                                                                   | —                       |
-| `client/src/screens/Archivos.tsx`   | 3.4                                                                                   | —                       |
-| `client/src/screens/Texto.tsx`      | 4.1                                                                                   | —                       |
-| `docker/Dockerfile`                 | 5.1                                                                                   | —                       |
-| `docker/Dockerfile.caddy`           | 5.1                                                                                   | —                       |
-| `docker/Caddyfile`                  | 5.1                                                                                   | —                       |
-| `docker-compose.yml`                | 5.1                                                                                   | —                       |
-| `.env.example`                      | 5.1                                                                                   | —                       |
-| `.env` (local, no git)              | 5.2                                                                                   | —                       |
-| `docs/arranque.md`                  | — (guía de puesta en marcha)                                                          | —                       |
-| `docs/seguridad.md`                 | — (análisis de seguridad)                                                             | —                       |
-| `client/src/files/validar.ts`       | — (segunda ronda)                                                                     | —                       |
-| `client/src/files/formatos.ts`      | — (formatos de texto)                                                                 | —                       |
-| `client/public/favicon.svg`         | — (segunda ronda)                                                                     | —                       |
-| `docker-compose.local.yml`          | — (cuarta ronda: modo rápido local)                                                   | —                       |
-| `client/src/files/resaltado.ts`     | — (cuarta ronda: highlight.js y detección de formato; solo lo carga la pestaña Texto) | —                       |
-| `client/src/files/miniatura.ts`     | — (cuarta ronda: miniaturas JPEG de las imágenes)                                     | —                       |
-| `client/src/files/qr.ts`            | — (cuarta ronda: generador de códigos QR sin dependencias)                            | —                       |
-| `client/src/state/mensajes.ts`      | — (cuarta ronda: validación de los mensajes del canal (`parseMsg`))                   | —                       |
-| `client/src/state/nombre.ts`        | — (cuarta ronda: nombre del dispositivo en `localStorage`)                            | —                       |
-| `client/src/ui/portapapeles.ts`     | — (cuarta ronda: copiar al portapapeles)                                              | —                       |
-| `client/src/ui/QrCodigo.tsx`        | — (cuarta ronda: QR en SVG)                                                           | —                       |
-| `client/src/ui/useAvisoTitulo.ts`   | — (cuarta ronda: contador de novedades en el título de la pestaña)                    | —                       |
-| `dist-server/` (no git)             | `pnpm build:server`                                                                   | —                       |
-| `pnpm-workspace.yaml`               | 0.1 (pnpm)                                                                            | —                       |
-| `.dockerignore`                     | 5.1                                                                                   | —                       |
+| Archivo                                            | Lo crea                                                                               | Lo modifican            |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------- |
+| `.gitignore`                                       | 0.1                                                                                   | —                       |
+| `.gitattributes`                                   | 0.1                                                                                   | —                       |
+| `package.json`                                     | 0.1                                                                                   | —                       |
+| `pnpm-lock.yaml`                                   | 0.1 (pnpm)                                                                            | —                       |
+| `tsconfig.json`                                    | 0.1                                                                                   | —                       |
+| `vitest.config.ts`                                 | 0.1                                                                                   | —                       |
+| `client/index.html`                                | 0.1                                                                                   | —                       |
+| `client/vite.config.ts`                            | 0.1                                                                                   | —                       |
+| `client/src/app/main.tsx`                          | 0.1                                                                                   | —                       |
+| `client/src/app/App.tsx`                           | 0.1                                                                                   | 1.2, 2.4, 3.1, 3.4, 4.1 |
+| `client/src/app/estilos-globales.css`              | 0.1                                                                                   | —                       |
+| `shared/protocolo/protocol.ts`                     | 0.2                                                                                   | —                       |
+| `server/index.ts`                                  | 0.3                                                                                   | 2.2                     |
+| `shared/token/token.ts`                            | 1.1                                                                                   | —                       |
+| `client/src/sala/PantallaInicio.tsx`               | 1.2                                                                                   | 2.4                     |
+| `server/sala/salas.ts`                             | 2.1                                                                                   | —                       |
+| `server/sala/limite-intentos.ts`                   | 2.1                                                                                   | —                       |
+| `tests/rooms.test.ts`                              | 2.1                                                                                   | —                       |
+| `client/src/sala/senalizacion.ts`                  | 2.2                                                                                   | —                       |
+| `client/src/sala/conexion-webrtc.ts`               | 2.3                                                                                   | —                       |
+| `client/src/sala/PantallaSalaCreada.tsx`           | 2.4                                                                                   | —                       |
+| `client/src/app/CabeceraPestanas.tsx`              | 3.1                                                                                   | —                       |
+| `client/src/sala/use-sala.ts`                      | 3.1                                                                                   | 3.3                     |
+| `client/src/transferencia/trocear-y-recomponer.ts` | 3.2                                                                                   | —                       |
+| `tests/chunker.test.ts`                            | 3.2                                                                                   | —                       |
+| `client/src/transferencia/transferencia.ts`        | 3.3                                                                                   | —                       |
+| `client/src/archivos/PantallaArchivos.tsx`         | 3.4                                                                                   | —                       |
+| `client/src/texto/PantallaTexto.tsx`               | 4.1                                                                                   | —                       |
+| `docker/Dockerfile`                                | 5.1                                                                                   | —                       |
+| `docker/Dockerfile.caddy`                          | 5.1                                                                                   | —                       |
+| `docker/Caddyfile`                                 | 5.1                                                                                   | —                       |
+| `docker-compose.yml`                               | 5.1                                                                                   | —                       |
+| `.env.example`                                     | 5.1                                                                                   | —                       |
+| `.env` (local, no git)                             | 5.2                                                                                   | —                       |
+| `docs/arranque.md`                                 | — (guía de puesta en marcha)                                                          | —                       |
+| `docs/seguridad.md`                                | — (análisis de seguridad)                                                             | —                       |
+| `client/src/transferencia/validar-entrada.ts`      | — (segunda ronda)                                                                     | —                       |
+| `client/src/transferencia/formatos.ts`             | — (formatos de texto)                                                                 | —                       |
+| `client/public/favicon.svg`                        | — (segunda ronda)                                                                     | —                       |
+| `docker-compose.local.yml`                         | — (cuarta ronda: modo rápido local)                                                   | —                       |
+| `client/src/texto/resaltado-sintaxis.ts`           | — (cuarta ronda: highlight.js y detección de formato; solo lo carga la pestaña Texto) | —                       |
+| `client/src/transferencia/miniatura.ts`            | — (cuarta ronda: miniaturas JPEG de las imágenes)                                     | —                       |
+| `client/src/sala/qr-generador.ts`                  | — (cuarta ronda: generador de códigos QR sin dependencias)                            | —                       |
+| `client/src/sala/mensajes.ts`                      | — (cuarta ronda: validación de los mensajes del canal (`parseMsg`))                   | —                       |
+| `client/src/sala/nombre-dispositivo.ts`            | — (cuarta ronda: nombre del dispositivo en `localStorage`)                            | —                       |
+| `client/src/portapapeles/portapapeles.ts`          | — (cuarta ronda: copiar al portapapeles)                                              | —                       |
+| `client/src/sala/QrCodigo.tsx`                     | — (cuarta ronda: QR en SVG)                                                           | —                       |
+| `client/src/app/use-aviso-titulo.ts`               | — (cuarta ronda: contador de novedades en el título de la pestaña)                    | —                       |
+| `dist-server/` (no git)                            | `pnpm build:server`                                                                   | —                       |
+| `pnpm-workspace.yaml`                              | 0.1 (pnpm)                                                                            | —                       |
+| `.dockerignore`                                    | 5.1                                                                                   | —                       |
 
 ---
 
@@ -142,7 +145,7 @@ Cada archivo del proyecto, la tarea que lo crea y las que lo modifican. Si un ar
 
 **Archivos:**
 
-- Crear: `.gitignore`, `.gitattributes`, `package.json`, `tsconfig.json`, `vitest.config.ts`, `client/index.html`, `client/vite.config.ts`, `client/src/main.tsx`, `client/src/App.tsx`, `client/src/index.css`
+- Crear: `.gitignore`, `.gitattributes`, `package.json`, `tsconfig.json`, `vitest.config.ts`, `client/index.html`, `client/vite.config.ts`, `client/src/app/main.tsx`, `client/src/app/App.tsx`, `client/src/app/estilos-globales.css`
 - Generado por pnpm: `pnpm-lock.yaml`
 - Ya existen (solo se añaden al primer commit): `CLAUDE.md`, `AGENTS.md`, `docs/plan.md`
 
@@ -159,7 +162,7 @@ Cada archivo del proyecto, la tarea que lo crea y las que lo modifican. Si un ar
 
 ### Tarea 0.2: Protocolo compartido
 
-**Archivos:** crear `shared/protocol.ts`.
+**Archivos:** crear `shared/protocolo/protocol.ts`.
 
 **Produce:**
 
@@ -209,7 +212,7 @@ type PeerMsg =
 
 ### Tarea 1.1: Token
 
-**Archivos:** crear `shared/token.ts`. Test en Tarea 2.1.
+**Archivos:** crear `shared/token/token.ts`. Test en Tarea 2.1.
 
 **Produce:**
 
@@ -224,8 +227,8 @@ type PeerMsg =
 
 **Archivos:**
 
-- Crear: `client/src/screens/Inicio.tsx`
-- Modificar: `client/src/App.tsx`
+- Crear: `client/src/sala/PantallaInicio.tsx`
+- Modificar: `client/src/app/App.tsx`
 
 **Produce:** `App` guarda `pantalla: 'inicio' | 'creada' | 'sala'` y la pestaña activa `'archivos' | 'texto'`.
 
@@ -242,7 +245,7 @@ type PeerMsg =
 
 ### Tarea 2.1: Salas en el servidor
 
-**Archivos:** crear `server/rooms.ts`, `server/limiter.ts`. Test: `tests/rooms.test.ts`.
+**Archivos:** crear `server/sala/salas.ts`, `server/sala/limite-intentos.ts`. Test: `tests/rooms.test.ts`.
 
 **Produce:**
 
@@ -254,7 +257,7 @@ class Rooms {
   leave(deviceId: string): void // abre la espera de 2 min
   peerOf(deviceId: string): string | undefined
 }
-function allowAttempt(ip: string, now?: number): boolean // limiter.ts, 5 fallos/min
+function allowAttempt(ip: string, now?: number): boolean // sala/limite-intentos.ts, 5 fallos/min
 ```
 
 - [ ] Escribir tests (fallan):
@@ -272,7 +275,7 @@ function allowAttempt(ip: string, now?: number): boolean // limiter.ts, 5 fallos
 
 ### Tarea 2.2: Señalización
 
-**Archivos:** modificar `server/index.ts`. Crear `client/src/net/signaling.ts`.
+**Archivos:** modificar `server/index.ts`. Crear `client/src/sala/senalizacion.ts`.
 
 **Consume:** `Rooms`, `allowAttempt`, `ToServer`, `FromServer`.
 **Produce:** `connectSignaling(): { send(m: ToServer): void; on(cb: (m: FromServer) => void): void; close(): void }`.
@@ -284,7 +287,7 @@ function allowAttempt(ip: string, now?: number): boolean // limiter.ts, 5 fallos
 
 ### Tarea 2.3: Conexión WebRTC
 
-**Archivos:** crear `client/src/net/peer.ts`.
+**Archivos:** crear `client/src/sala/conexion-webrtc.ts`.
 
 **Produce:** `connectPeer(sig, initiator: boolean): Promise<RTCDataChannel>`.
 
@@ -298,8 +301,8 @@ function allowAttempt(ip: string, now?: number): boolean // limiter.ts, 5 fallos
 
 **Archivos:**
 
-- Crear: `client/src/screens/SalaCreada.tsx`
-- Modificar: `client/src/screens/Inicio.tsx`, `client/src/App.tsx`
+- Crear: `client/src/sala/PantallaSalaCreada.tsx`
+- Modificar: `client/src/sala/PantallaInicio.tsx`, `client/src/app/App.tsx`
 
 - [x] **Crear sala** → envía `create` → pantalla 2 con el token grande (`formatToken`), "Escríbelo en el otro dispositivo", "Esperando…" y un enlace **Cancelar** que vuelve a Inicio.
 - [x] Con `peer-joined` → `connectPeer(sig, false)` → pantalla `sala`.
@@ -316,8 +319,8 @@ function allowAttempt(ip: string, now?: number): boolean // limiter.ts, 5 fallos
 
 **Archivos:**
 
-- Crear: `client/src/ui/Header.tsx`, `client/src/state/sala.ts`
-- Modificar: `client/src/App.tsx` (en la pantalla `sala`, mostrar `Header` y la pestaña activa)
+- Crear: `client/src/app/CabeceraPestanas.tsx`, `client/src/sala/use-sala.ts`
+- Modificar: `client/src/app/App.tsx` (en la pantalla `sala`, mostrar `Header` y la pestaña activa)
 
 **Produce:**
 
@@ -351,7 +354,7 @@ function useSala(channel: RTCDataChannel): {
 
 ### Tarea 3.2: Trocear y recomponer
 
-**Archivos:** crear `client/src/files/chunker.ts`. Test: `tests/chunker.test.ts`.
+**Archivos:** crear `client/src/transferencia/trocear-y-recomponer.ts`. Test: `tests/chunker.test.ts`.
 
 **Produce:**
 
@@ -376,8 +379,8 @@ function receiver(
 
 **Archivos:**
 
-- Crear: `client/src/files/transfer.ts`
-- Modificar: `client/src/state/sala.ts`
+- Crear: `client/src/transferencia/transferencia.ts`
+- Modificar: `client/src/sala/use-sala.ts`
 
 **Consume:** `chunks`, `receiver`, `PeerMsg`.
 **Produce:** `sendFile(ch, id, file, onProgress)` y `receiveFile(ch, item, onProgress): Promise<void>`.
@@ -393,8 +396,8 @@ function receiver(
 
 **Archivos:**
 
-- Crear: `client/src/screens/Archivos.tsx`
-- Modificar: `client/src/App.tsx` (pestaña Archivos → `Archivos`)
+- Crear: `client/src/archivos/PantallaArchivos.tsx`
+- Modificar: `client/src/app/App.tsx` (pestaña Archivos → `Archivos`)
 
 - [x] Zona "Suelta archivos aquí o pulsa para añadir" (arrastrar y soltar + `<input type="file" multiple>`).
 - [x] Fila por archivo: nombre, tamaño legible y "Este dispositivo" / "Otro dispositivo" / "No disponible".
@@ -410,8 +413,8 @@ function receiver(
 
 **Archivos:**
 
-- Crear: `client/src/screens/Texto.tsx`
-- Modificar: `client/src/App.tsx` (pestaña Texto → `Texto`)
+- Crear: `client/src/texto/PantallaTexto.tsx`
+- Modificar: `client/src/app/App.tsx` (pestaña Texto → `Texto`)
 
 **Consume:** `useSala` (`texts`, `addText`, `removeText`).
 
@@ -473,13 +476,13 @@ function receiver(
 - `pnpm-workspace.yaml` (con `allowBuilds: esbuild`): pnpm lo exige para que esbuild pueda instalarse.
 - `.dockerignore`: sin él, `COPY . .` copiaría `node_modules` de Windows a la imagen.
 - Dockerfile: `npm install -g pnpm@12.5.1` en vez de `corepack enable`, para no depender de que corepack conozca esa versión de pnpm.
-- `server/limiter.ts`: además de `allowAttempt(ip, now?)` exporta `registerFailure(ip, now?)`. El plan solo definía la primera y no había cómo contar los fallos.
-- `server/rooms.ts`: añade `sweep()`, que cierra las salas cuya espera ha terminado (se llama sola cada 15 s). Una sala sin emparejar se cierra al salir su creador; una emparejada espera 2 min.
-- `shared/token.ts`: añade `randomId()`; `crypto.randomUUID` no existe en páginas sin HTTPS.
-- `shared/protocol.ts`: `text-add` lleva `part` y `parts` (Chrome limita cada mensaje a ~256 KB, así que los textos de hasta 1 MB se parten). Mensaje nuevo `bye`.
-- `client/src/net/signaling.ts`: `on()` devuelve la función para dejar de escuchar; añade `onClose()` y las funciones de `sessionStorage` (`getDeviceId`, `saveToken`, `loadToken`, `clearToken`).
-- `client/src/files/transfer.ts`: `receiveFile(item, onProgress)` devuelve un `Download` (`push`, `end`, `abort`) en vez de una promesa vacía; los bloques los enruta `state/sala.ts`. `sendFile(ch, id, file, onProgress, cancel)`.
-- `client/src/state/sala.ts`: `useSala` devuelve además `notice` (avisos) y `cancelDownload(id)`.
+- `server/sala/limite-intentos.ts`: además de `allowAttempt(ip, now?)` exporta `registerFailure(ip, now?)`. El plan solo definía la primera y no había cómo contar los fallos.
+- `server/sala/salas.ts`: añade `sweep()`, que cierra las salas cuya espera ha terminado (se llama sola cada 15 s). Una sala sin emparejar se cierra al salir su creador; una emparejada espera 2 min.
+- `shared/token/token.ts`: añade `randomId()`; `crypto.randomUUID` no existe en páginas sin HTTPS.
+- `shared/protocolo/protocol.ts`: `text-add` lleva `part` y `parts` (Chrome limita cada mensaje a ~256 KB, así que los textos de hasta 1 MB se parten). Mensaje nuevo `bye`.
+- `client/src/sala/senalizacion.ts`: `on()` devuelve la función para dejar de escuchar; añade `onClose()` y las funciones de `sessionStorage` (`getDeviceId`, `saveToken`, `loadToken`, `clearToken`).
+- `client/src/transferencia/transferencia.ts`: `receiveFile(item, onProgress)` devuelve un `Download` (`push`, `end`, `abort`) en vez de una promesa vacía; los bloques los enruta `state/sala.ts`. `sendFile(ch, id, file, onProgress, cancel)`.
+- `client/src/sala/use-sala.ts`: `useSala` devuelve además `notice` (avisos) y `cancelDownload(id)`.
 - `Header`: botón **Salir**, que no estaba en la maqueta. Sin él no había forma de cerrar la sala sin cerrar la pestaña; avisa al otro dispositivo con `bye`.
 - `docker/Dockerfile.caddy` sin verificar: `xcaddy build` falló dos veces en este PC porque no llega a `proxy.golang.org` (conexión cortada / error de revocación TLS de la red). La imagen de la app sí se construyó y arrancó. Para probarlo hay que ejecutar `docker compose build caddy` en una red que llegue a ese proxy.
 - Sin PWA (el usuario no la quiere): se usa abriendo la dirección en el navegador. Docker no arranca con Windows y los contenedores no se reinician solos: el usuario los levanta a mano con `docker compose up -d`.
@@ -488,11 +491,11 @@ function receiver(
   - Conexión: pantalla «Conectando…» con límite de 20 s y reintento (`Conectando`, exportado desde `SalaCreada.tsx`); mensajes distintos para servidor caído, sala inexistente y sala cerrada por el otro; reconexión con espera creciente; el token solo se guarda en `sessionStorage` al emparejarse.
   - Archivos: confirmaciones de recepción (`file-ack`) y ventana de 8 MB; mensajes de 64 KB; descargas en cola; progreso en ambos lados (`transfers` sustituye a `progress` en `useSala`); aviso del respaldo en memoria (200 MB móvil / 500 MB escritorio, máximo 1,5 GB); latido `ping`/`pong` cada 5 s (corta a los 15 s sin señal); reanudación de descargas cortadas (`file-request` con `offset`, estado `paused`, 2 min de espera).
   - Interfaz móvil: variables nuevas en `index.css` (`acento-texto` #ab4f2b y `suave` #6b5a49, para contraste AA), clases `.btn`, `.tarjeta`, `.pantalla`, `.gutter`; cabecera fija con pestañas; favicon; Archivos con pegado de imágenes y carpetas; Texto con autodetección de formato, edición y plegado.
-  - Seguridad: CSP y cabeceras (`server/index.ts`), HSTS (Caddy), validación estricta de lo que llega del otro dispositivo, `client/src/files/validar.ts` (nuevo: sanea nombres, mime y formato; avisa de ejecutables), red interna Docker. Detalle en `docs/seguridad.md`.
+  - Seguridad: CSP y cabeceras (`server/index.ts`), HSTS (Caddy), validación estricta de lo que llega del otro dispositivo, `client/src/transferencia/validar-entrada.ts` (nuevo: sanea nombres, mime y formato; avisa de ejecutables), red interna Docker. Detalle en `docs/seguridad.md`.
   - Docker: imagen multietapa sin root, `dist-server/` (`pnpm build:server`), healthcheck, `read_only`, `cap_drop`, límites y registros acotados.
   - **UX (tercera ronda, a petición del usuario):** dependencia nueva `lucide-react` (iconos de tipo de archivo y papelera). Barra de progreso con rayas «\» animadas en terracota/crema (`.barra`, `.barra-relleno`, `.barra-pausada` en `index.css`), igual en descarga y envío; botón de papelera para quitar el archivo propio (y el fragmento propio de texto); botones **Pegar** (solo con HTTPS) y **Limpiar** en Texto; aviso «Descargado/Enviado» con vibración corta al terminar bien; filas que entran con una animación suave (`.entra`), icono de la zona de soltar que salta al arrastrar, iconos en Copiar y rebote al copiado, y pulsación con efecto de hundimiento en los botones. Se respeta `prefers-reduced-motion`.
-  - **Formatos de texto ampliados a 28** (`client/src/files/formatos.ts`, archivo nuevo que sustituye a las listas que había en `Texto.tsx` y `validar.ts`): Java, C#, C++, C, Go, Rust, PHP, Kotlin, Swift, Ruby, Dart, R, Lua, PowerShell, YAML, INI/TOML, Diff y Dockerfile, además de los 10 anteriores. YAML, INI, Diff, Dockerfile, PowerShell, Java y Dart se reconocen por pistas (reglas propias) porque `highlightAuto` los confundía con texto normal; R y Lua solo se eligen a mano. Probado en Node con 25 ejemplos de código (25 acertados) y 13 de texto normal (todos quedan como texto). Un YAML plano de dos líneas (`nombre: Ana`) se queda como texto a propósito, para no marcar notas sueltas como YAML.
-  - **Código de la sala (Inicio):** se escribe en 8 casillas (4 - 4) con un único campo de texto invisible encima (pegar, autocompletar y lectores de pantalla siguen funcionando). Todo lo que entra pasa por `sanitizeToken` (`shared/token.ts`): solo caracteres del alfabeto, en mayúsculas y como mucho 8; pegar sustituye el código entero. `Unirme` solo se activa con un código válido (`isValidToken`). El servidor aplica la misma regla antes de buscar la sala: un código con otro formato da `not_found` y cuenta como intento fallido. Probado: 10 códigos mal formados en el servidor, entradas hostiles y pegados en Chrome, y captura a 320 px.
+  - **Formatos de texto ampliados a 28** (`client/src/transferencia/formatos.ts`, archivo nuevo que sustituye a las listas que había en `Texto.tsx` y `validar.ts`): Java, C#, C++, C, Go, Rust, PHP, Kotlin, Swift, Ruby, Dart, R, Lua, PowerShell, YAML, INI/TOML, Diff y Dockerfile, además de los 10 anteriores. YAML, INI, Diff, Dockerfile, PowerShell, Java y Dart se reconocen por pistas (reglas propias) porque `highlightAuto` los confundía con texto normal; R y Lua solo se eligen a mano. Probado en Node con 25 ejemplos de código (25 acertados) y 13 de texto normal (todos quedan como texto). Un YAML plano de dos líneas (`nombre: Ana`) se queda como texto a propósito, para no marcar notas sueltas como YAML.
+  - **Código de la sala (Inicio):** se escribe en 8 casillas (4 - 4) con un único campo de texto invisible encima (pegar, autocompletar y lectores de pantalla siguen funcionando). Todo lo que entra pasa por `sanitizeToken` (`shared/token/token.ts`): solo caracteres del alfabeto, en mayúsculas y como mucho 8; pegar sustituye el código entero. `Unirme` solo se activa con un código válido (`isValidToken`). El servidor aplica la misma regla antes de buscar la sala: un código con otro formato da `not_found` y cuenta como intento fallido. Probado: 10 códigos mal formados en el servidor, entradas hostiles y pegados en Chrome, y captura a 320 px.
   - **Quedó fuera:** QR para el código (haría falta una librería o un generador propio sin poder verificarlo), TURN propio (Fase 2), confirmación del creador antes de aceptar a un dispositivo (cambia el diseño; ver `docs/seguridad.md`), fijar versiones de `xcaddy`/imágenes base, modo oscuro (el usuario eligió el fondo crema).
   - **Sin verificar en dispositivos reales:** escritura directa a disco con el selector de guardado real, borrado del archivo vacío al cancelar (`handle.remove`), corte de red real (ICE `disconnected`/`failed`), velocidad en Wi-Fi, móvil real e iOS, imagen de Caddy con DuckDNS.
 - **Cuarta ronda (revisión completa y mejoras):**
@@ -500,7 +503,7 @@ function receiver(
   - **Emparejamiento con confirmación:** el creador acepta o rechaza a quien quiere unirse (`pending`, `join-request`, `accept`, `reject`, `join-cancelled`; 60 s de límite, errores `rejected` y `no_answer`). Un miembro que vuelve a una sala emparejada entra directo; `join.direct` y `peer-joined.direct` indican que su canal sigue abierto y no se reempareja (si solo un lado lo conserva, el otro manda la señal `repair`).
   - **Servidor:** límite de 10 salas creadas por minuto y por IP (`allowCreate`) y línea con el total de rechazos por minuto, sin IPs.
   - **Docker:** imágenes por `@sha256:`, `caddy-dns/duckdns@v0.5.0` (la imagen de Caddy ya compila), `encode zstd gzip`, `BIND_IP` para publicar el 443 solo en la IP de la LAN y `react`, `react-dom`, `highlight.js` y `lucide-react` en `devDependencies` (la imagen final lleva solo `ws`).
-  - **Cliente:** `files/resaltado.ts` (nuevo) separa highlight.js de `formatos.ts` y la pestaña Texto se carga aparte (`React.lazy`): el bundle principal baja de 402 KB a unos 285 KB. `state/mensajes.ts` (nuevo) contiene `parseMsg`; `ui/portapapeles.ts` unifica el copiado; confirmación al salir con transferencias en curso; aviso de guardado en memoria antes de descargar archivos grandes (`memoryNotice`).
+  - **Cliente:** `texto/resaltado-sintaxis.ts` (nuevo) separa highlight.js de `transferencia/formatos.ts` y la pestaña Texto se carga aparte (`React.lazy`): el bundle principal baja de 402 KB a unos 285 KB. `state/mensajes.ts` (nuevo) contiene `parseMsg`; `ui/portapapeles.ts` unifica el copiado; confirmación al salir con transferencias en curso; aviso de guardado en memoria antes de descargar archivos grandes (`memoryNotice`).
   - **Funciones nuevas:** velocidad y tiempo restante; **Descargar todos** con una sola carpeta (`showDirectoryPicker`, sin pisar archivos existentes); miniaturas de imágenes (`files/miniatura.ts`, JPEG de 96 px en `file-add.thumb`, validado con `sanitizeThumb`); nombre editable del dispositivo (`hello`, `state/nombre.ts`, `localStorage`); botón **Vaciar mis textos**; contador en el título con la pestaña oculta; QR de la sala (`files/qr.ts`, generador propio sin dependencias, versiones 1 a 7, nivel M; el enlace `/#CÓDIGO` se une directamente).
   - **Modo rápido local:** `docker-compose.local.yml` (un solo contenedor, puerto 8080, sin Caddy ni DuckDNS ni `.env`) para usarla bajo demanda solo en la LAN. El modo con DuckDNS y HTTPS sigue disponible. Se descartó desplegarla en `pc1-personal` y en Vercel (no admite WebSockets ni procesos de larga vida).
   - **Descartado a propósito:** guardado en streaming por Service Worker para móviles (obligaría a relajar `worker-src` en la CSP y no es fiable en iOS), opción de quitar los STUN públicos y la Fase 2.

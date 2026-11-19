@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { qrMatriz } from '../files/qr'
+import { qrMatriz } from './qr-generador'
 
 const MARGEN = 4 // zona en blanco que exige el estándar alrededor del código
 

@@ -1,5 +1,5 @@
 import { Fragment, useRef, useState } from 'react'
-import { isValidToken, sanitizeToken } from '../../../shared/token'
+import { isValidToken, sanitizeToken } from '../../../shared/token/token'
 
 const ERRORES: Record<string, string> = {
   not_found: 'Código no válido',

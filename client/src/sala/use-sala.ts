@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { PeerMsg } from '../../../shared/protocol'
-import { randomId } from '../../../shared/token'
-import { crearMiniatura } from '../files/miniatura'
-import { replayEarly } from '../net/peer'
+import type { PeerMsg } from '../../../shared/protocolo/protocol'
+import { randomId } from '../../../shared/token/token'
+import { crearMiniatura } from '../transferencia/miniatura'
+import { replayEarly } from './conexion-webrtc'
 import { TEXT_PART, parseMsg } from './mensajes'
-import { cargarNombre, guardarNombre, nombrePorDefecto } from './nombre'
-import { sanitizeDeviceName } from '../files/validar'
+import {
+  cargarNombre,
+  guardarNombre,
+  nombrePorDefecto,
+} from './nombre-dispositivo'
+import { sanitizeDeviceName } from '../transferencia/validar-entrada'
 import {
   AvisoError,
   folderDestination,
@@ -20,7 +24,7 @@ import {
   type Destination,
   type Download,
   type Send,
-} from '../files/transfer'
+} from '../transferencia/transferencia'
 
 export type FileItem = {
   id: string

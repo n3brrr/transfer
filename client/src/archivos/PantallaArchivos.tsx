@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Sala } from '../state/sala'
+import type { Sala } from '../sala/use-sala'
 import {
   formatEta,
   formatSize,
@@ -7,8 +7,8 @@ import {
   hasSavePicker,
   isMobile,
   memoryNotice,
-} from '../files/transfer'
-import { isDangerousName } from '../files/validar'
+} from '../transferencia/transferencia'
+import { isDangerousName } from '../transferencia/validar-entrada'
 import {
   Check,
   FileArchive,

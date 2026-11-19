@@ -165,13 +165,14 @@ Detrás de Caddy, con un dominio de [DuckDNS](https://www.duckdns.org/) y acceso
 transferir/
 ├── client/
 │   └── src/
-│       ├── screens/       # Pantallas: Inicio, Sala creada, Archivos, Texto
-│       ├── ui/            # Piezas reutilizables (cabecera, QR, portapapeles…)
-│       ├── net/           # Señalización WebSocket y conexión WebRTC
-│       ├── files/         # Troceado, transferencia, validación y miniaturas
-│       └── state/         # Estado de la sala y de los mensajes
-├── server/                # Salas, límite de intentos y servidor HTTP/WebSocket
-├── shared/                # Protocolo y generación de tokens (cliente y servidor)
+│       ├── app/           # Arranque, navegación entre pantallas y cabecera
+│       ├── sala/          # Emparejar dispositivos, señalización, WebRTC y estado de la sala
+│       ├── archivos/      # Pantalla Archivos
+│       ├── texto/         # Pantalla Texto
+│       ├── transferencia/ # Motor compartido: troceado, envío, validación y miniaturas
+│       └── portapapeles/  # Copiar al portapapeles
+├── server/                # index.ts (HTTP/WebSocket) y sala/ (salas y límite de intentos)
+├── shared/                # protocolo/ y token/ (cliente y servidor)
 ├── docker/                # Dockerfiles y Caddyfile
 ├── docs/                  # Plan, guía de arranque y seguridad
 ├── docker-compose.yml        # App + Caddy con DuckDNS (HTTPS)

@@ -74,11 +74,11 @@ Aplican siempre, sea Claude u otro modelo.
 
 ## Arquitectura (visión de conjunto)
 
-- **Tres capas.** El servidor (`server/`) solo empareja y reenvía `signal` (SDP/ICE) entre los dos dispositivos de una sala; nunca ve contenido. Los datos van por un `RTCDataChannel` abierto por `client/src/net/peer.ts` (`connectPeer`; quien se une ofrece, quien espera responde).
-- **Contrato único en `shared/protocol.ts`:** `ToServer`/`FromServer` (cliente↔servidor, WebSocket en `/ws`) y `PeerMsg` (dispositivo↔dispositivo, JSON; los bloques de archivo van en binario). Cualquier mensaje nuevo se añade ahí y se valida en recepción.
-- **`client/src/state/sala.ts` (`useSala`) es el centro del cliente:** une señalización, canal WebRTC, lista compartida de archivos/textos, colas de descarga, latido ping/pong, reanudación y reconexión. Las pantallas (`screens/`) solo pintan lo que devuelve.
-- **Transferencia de archivos:** `files/chunker.ts` trocea/recompone; `files/transfer.ts` hace el control de flujo (ventana de 8 MB con `file-ack` del receptor) y la escritura a disco (selector de guardado, o memoria con límites como respaldo); `files/validar.ts` sanea todo lo que llega del otro lado.
-- **Servidor:** `rooms.ts` (salas con token, caducidad y `sweep()`), `limiter.ts` (intentos fallidos por IP), `index.ts` (HTTP estático desde `client/dist`, `/health`, upgrade WebSocket, CSP). En producción se compila a `dist-server/` y corre en Docker detrás de Caddy.
+- **Tres capas.** El servidor (`server/`) solo empareja y reenvía `signal` (SDP/ICE) entre los dos dispositivos de una sala; nunca ve contenido. Los datos van por un `RTCDataChannel` abierto por `client/src/sala/conexion-webrtc.ts` (`connectPeer`; quien se une ofrece, quien espera responde).
+- **Contrato único en `shared/protocolo/protocol.ts`:** `ToServer`/`FromServer` (cliente↔servidor, WebSocket en `/ws`) y `PeerMsg` (dispositivo↔dispositivo, JSON; los bloques de archivo van en binario). Cualquier mensaje nuevo se añade ahí y se valida en recepción.
+- **`client/src/sala/use-sala.ts` (`useSala`) es el centro del cliente:** une señalización, canal WebRTC, lista compartida de archivos/textos, colas de descarga, latido ping/pong, reanudación y reconexión. Las pantallas (`*/Pantalla*.tsx`) solo pintan lo que devuelve.
+- **Transferencia de archivos:** `transferencia/trocear-y-recomponer.ts` trocea/recompone; `transferencia/transferencia.ts` hace el control de flujo (ventana de 8 MB con `file-ack` del receptor) y la escritura a disco (selector de guardado, o memoria con límites como respaldo); `transferencia/validar-entrada.ts` sanea todo lo que llega del otro lado.
+- **Servidor:** `sala/salas.ts` (salas con token, caducidad y `sweep()`), `sala/limite-intentos.ts` (intentos fallidos por IP), `index.ts` (HTTP estático desde `client/dist`, `/health`, upgrade WebSocket, CSP). En producción se compila a `dist-server/` y corre en Docker detrás de Caddy.
 - **Tests aplazados** (ver "Estado actual"): los pasos de `tests/` quedan en pausa hasta que el usuario lo pida. Para un solo test, cuando existan: `pnpm exec vitest run tests/<archivo>.test.ts`.
 
 ## Sistema de archivos
@@ -93,11 +93,10 @@ transferir/
   shared/                 código común cliente/servidor (protocolo, token)
   server/                 salas, límite de intentos, HTTP + WebSocket
   client/src/
-    screens/              una pantalla por archivo
-    ui/                   piezas reutilizables
-    net/                  señalización y WebRTC
-    files/                trocear, enviar, recibir
-    state/                lista compartida
+    app/                  arranque, navegación, cabecera
+    sala/                 emparejar y estado de la sala (núcleo)
+    archivos/, texto/     una pantalla por feature
+    transferencia/        motor: troceado, envío, validación
   tests/                  todos los tests, nada más
   docker/                 Dockerfiles y Caddyfile
   docker-compose.yml, .env.example
@@ -173,7 +172,7 @@ Tipos: `feat`, `fix`, `test`, `refactor`, `style`, `docs`, `chore`, `build`. Ám
 - No registrar tokens completos en logs.
 - Secretos (token de DuckDNS) solo en `.env`; en el repo, `.env.example` sin valores.
 - Todo lo de una sesión se borra al cerrarla.
-- Lo que llega del otro dispositivo por el canal WebRTC es entrada **no fiable**: se valida siempre (tipos, tamaños, ids, longitudes) y los nombres de archivo se sanean (`client/src/files/validar.ts`) antes de usarlos.
+- Lo que llega del otro dispositivo por el canal WebRTC es entrada **no fiable**: se valida siempre (tipos, tamaños, ids, longitudes) y los nombres de archivo se sanean (`client/src/transferencia/validar-entrada.ts`) antes de usarlos.
 - El servidor pone la política de seguridad (CSP y demás cabeceras) en `server/index.ts`. Si se añade algo al cliente que cargue recursos externos, scripts o estilos en línea, hay que ajustarla y comprobar la consola del navegador.
 - El puerto 443 es solo para la red de casa: nunca redirigir puertos en el router ni usar DMZ/UPnP. Ver `docs/seguridad.md`.
 

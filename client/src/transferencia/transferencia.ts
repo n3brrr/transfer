@@ -1,5 +1,5 @@
-import type { PeerMsg } from '../../../shared/protocol'
-import { chunks, receiver } from './chunker'
+import type { PeerMsg } from '../../../shared/protocolo/protocol'
+import { chunks, receiver } from './trocear-y-recomponer'
 
 // Control de flujo del emisor: no hay más de WINDOW bytes sin confirmar (escritos) por el receptor
 // y el búfer de salida del canal no pasa de HIGH_WATER. Medido con 100 MB entre dos pestañas de Chrome: 1/0,25/2 MB, 4/1/8 MB y

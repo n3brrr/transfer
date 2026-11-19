@@ -7,16 +7,16 @@ import { readFile } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
-import type { FromServer, ToServer } from '../shared/protocol'
-import { isValidToken, normalizeToken } from '../shared/token'
-import { Rooms } from './rooms'
+import type { FromServer, ToServer } from '../shared/protocolo/protocol'
+import { isValidToken, normalizeToken } from '../shared/token/token'
+import { Rooms } from './sala/salas'
 import {
   allowAttempt,
   allowCreate,
   registerFailure,
   sweepFailures,
   takeBlocked,
-} from './limiter'
+} from './sala/limite-intentos'
 
 const PORT = Number(process.env.PORT ?? 8080)
 // DIST_DIR permite servir otra carpeta de la web (para probar sin tocar client/dist)

@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Check, ClipboardPaste, Copy, Eraser, Trash2 } from 'lucide-react'
-import { FORMATOS, nombreFormato } from '../files/formatos'
-import { detectar, resaltar } from '../files/resaltado'
-import type { Sala, TextItem } from '../state/sala'
-import { formatSize } from '../files/transfer'
-import { copiarTexto } from '../ui/portapapeles'
+import { FORMATOS, nombreFormato } from '../transferencia/formatos'
+import { detectar, resaltar } from './resaltado-sintaxis'
+import type { Sala, TextItem } from '../sala/use-sala'
+import { formatSize } from '../transferencia/transferencia'
+import { copiarTexto } from '../portapapeles/portapapeles'
 
 const MAX_BYTES = 1024 * 1024
 const AVISO_BYTES = 800 * 1024 // a partir de aquí se avisa de que se acerca el límite
