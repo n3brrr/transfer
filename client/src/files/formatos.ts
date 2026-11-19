@@ -28,7 +28,8 @@ export const FORMATOS = [
   { id: 'dart', nombre: 'Dart' },
   { id: 'r', nombre: 'R' },
   { id: 'lua', nombre: 'Lua' },
-];
+]
 
-export const FORMATO_IDS = new Set(FORMATOS.map((f) => f.id));
-export const nombreFormato = (id: string) => FORMATOS.find((f) => f.id === id)?.nombre ?? id;
+export const FORMATO_IDS = new Set(FORMATOS.map((f) => f.id))
+export const nombreFormato = (id: string) =>
+  FORMATOS.find((f) => f.id === id)?.nombre ?? id

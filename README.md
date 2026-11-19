@@ -55,15 +55,15 @@ Transferir es una web pensada para uso personal: creas una sala en un dispositiv
 
 ## Funcionalidades
 
-| Área                | Qué ofrece                                                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Salas**           | Código de 8 caracteres (`XXXX-XXXX`) que caduca a los 5 minutos si nadie se une. Sala de dos dispositivos como máximo.                    |
-| **Emparejamiento**  | Enlace o código QR para unirse. Quien crea la sala debe aceptar al otro dispositivo.                                                       |
-| **Archivos**        | Envío en bloques de 64 KB con control de flujo, miniaturas de imágenes, velocidad y tiempo restante, y descarga de todos a una carpeta.  |
-| **Textos**          | Envío de textos de hasta 1 MB, con resaltado de sintaxis cuando el contenido es código, y botón para vaciar los propios.                  |
-| **Reconexión**      | Si un dispositivo se cae, la sala le espera 2 minutos para volver con el mismo identificador.                                              |
-| **Avisos**          | Confirmación antes de salir con transferencias en curso y aviso en el título de la pestaña cuando llega algo con la pestaña oculta.      |
-| **Nombre**          | Cada dispositivo puede tener un nombre editable visible para el otro.                                                                      |
+| Área               | Qué ofrece                                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Salas**          | Código de 8 caracteres (`XXXX-XXXX`) que caduca a los 5 minutos si nadie se une. Sala de dos dispositivos como máximo.                  |
+| **Emparejamiento** | Enlace o código QR para unirse. Quien crea la sala debe aceptar al otro dispositivo.                                                    |
+| **Archivos**       | Envío en bloques de 64 KB con control de flujo, miniaturas de imágenes, velocidad y tiempo restante, y descarga de todos a una carpeta. |
+| **Textos**         | Envío de textos de hasta 1 MB, con resaltado de sintaxis cuando el contenido es código, y botón para vaciar los propios.                |
+| **Reconexión**     | Si un dispositivo se cae, la sala le espera 2 minutos para volver con el mismo identificador.                                           |
+| **Avisos**         | Confirmación antes de salir con transferencias en curso y aviso en el título de la pestaña cuando llega algo con la pestaña oculta.     |
+| **Nombre**         | Cada dispositivo puede tener un nombre editable visible para el otro.                                                                   |
 
 ## Arquitectura
 
@@ -139,15 +139,16 @@ Detrás de Caddy, con un dominio de [DuckDNS](https://www.duckdns.org/) y acceso
 
 ## Scripts
 
-| Comando          | Descripción                                                                  |
-| ---------------- | ---------------------------------------------------------------------------- |
-| `pnpm dev:server`| Servidor en desarrollo con recarga automática (`tsx watch`), puerto 8080.    |
-| `pnpm dev:client`| Servidor de desarrollo de Vite con proxy de `/ws` al servidor.               |
-| `pnpm build`     | Compila la web en `client/dist`.                                             |
+| Comando             | Descripción                                                               |
+| ------------------- | ------------------------------------------------------------------------- |
+| `pnpm dev:server`   | Servidor en desarrollo con recarga automática (`tsx watch`), puerto 8080. |
+| `pnpm dev:client`   | Servidor de desarrollo de Vite con proxy de `/ws` al servidor.            |
+| `pnpm build`        | Compila la web en `client/dist`.                                          |
 | `pnpm build:server` | Compila el servidor en `dist-server/` (usado por Docker).                 |
-| `pnpm start`     | Ejecuta el servidor sirviendo `client/dist` (tras `pnpm build`).             |
-| `pnpm test`      | Ejecuta Vitest. Los tests están aplazados por ahora.                         |
-| `pnpm exec tsc --noEmit` | Comprueba los tipos de todo el proyecto.                             |
+| `pnpm start`        | Ejecuta el servidor sirviendo `client/dist` (tras `pnpm build`).          |
+| `pnpm test`         | Ejecuta Vitest. Los tests están aplazados por ahora.                      |
+| `pnpm typecheck`    | Comprueba los tipos de todo el proyecto (`tsc --noEmit`).                 |
+| `pnpm lint`         | Comprueba el formato con Prettier. Es lo que ejecuta el CI en cada PR.    |
 
 ## Seguridad
 

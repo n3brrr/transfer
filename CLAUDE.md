@@ -22,12 +22,14 @@ Web app personal para pasar archivos y textos entre 2 dispositivos emparejados c
 Aplican siempre, sea Claude u otro modelo.
 
 **Antes de empezar una tarea**
+
 1. Leer este archivo entero.
 2. Leer en `docs/plan.md` la tarea completa: su lista **Archivos**, su bloque **Consume/Produce** y todos sus pasos.
 3. Mirar en el "Mapa de archivos" del plan qué tarea creó cada archivo que vas a tocar.
 4. Leer los archivos existentes que la tarea modifica antes de editarlos.
 
 **Durante la tarea**
+
 - Una tarea a la vez. No empezar la siguiente hasta que la actual esté terminada, con commit y subida a `dev`.
 - Crear y modificar **solo** los archivos que indica la tarea, con la ruta exacta del plan. Además, `docs/plan.md` para marcar casillas.
 - Si hace falta un archivo o dependencia que el plan no lista: parar y preguntar.
@@ -37,6 +39,7 @@ Aplican siempre, sea Claude u otro modelo.
 - No borrar ni reescribir archivos que no sean de la tarea, ni código que funcione, sin preguntar.
 
 **Al terminar una tarea**
+
 1. Ejecutar `pnpm test` y `pnpm exec tsc --noEmit`. Si es interfaz, comprobarla a mano.
 2. Borrar todo lo temporal (ver "Archivos temporales").
 3. Marcar las casillas en `docs/plan.md`.
@@ -44,6 +47,7 @@ Aplican siempre, sea Claude u otro modelo.
 5. Informar en pocas líneas: tarea (p. ej. "Tarea 2.1"), archivos creados/modificados con su ruta, comandos ejecutados y su resultado, y hash del commit.
 
 **Si se cambia una decisión**
+
 - Actualizar `docs/plan.md` (y este archivo y `AGENTS.md` si afecta a las reglas) en el mismo commit, citando qué tarea cambia.
 
 ## Carpeta de trabajo
@@ -65,6 +69,7 @@ Aplican siempre, sea Claude u otro modelo.
 - Cliente: Vite + React + Tailwind. Servidor: Node 24 + `ws`; en desarrollo se ejecuta con `tsx` y en Docker se compila a `dist-server/` con `pnpm build:server`. Tests: Vitest.
 - Despliegue: Docker Compose + Caddy (plugin DuckDNS) en el PC del usuario.
 - Iconos: `lucide-react` (la única dependencia añadida después del plan, a petición del usuario).
+- Formato: `prettier` (dependencia de desarrollo añadida a petición del usuario).
 - No añadir dependencias que no estén en el plan sin preguntar.
 
 ## Arquitectura (visión de conjunto)
@@ -111,21 +116,25 @@ transferir/
 - Desarrollo: `pnpm dev:server` (puerto 8080) y `pnpm dev:client` (Vite, proxy de `/ws` al servidor). `pnpm start` sirve `client/dist` tras `pnpm build`.
 - `pnpm dev:server` · `pnpm dev:client` · `pnpm build` · `pnpm start` · `pnpm test`
 - Comprobar tipos: `pnpm exec tsc --noEmit`
+- Formato: Prettier (`.prettierrc.json`). `pnpm format` formatea y `pnpm format:check` comprueba. Formatear antes de cada commit. No hay ESLint.
 
 ## Git
 
 **Ramas**
+
 - `main`: solo código estable. Nunca se trabaja ni se hace commit directo en ella.
 - `dev`: aquí se trabaja y se sube todo.
 - Merge `dev` → `main` **solo cuando el usuario lo diga**: `git checkout main && git merge --no-ff dev && git push origin main`, y volver a `dev`.
 
 **Cuándo hacer commit**
+
 - En cuanto un archivo o grupo de archivos funciona, no al terminar una pantalla entera.
 - "Funciona" = `pnpm test` pasa, `pnpm exec tsc --noEmit` sin errores y, si es interfaz, comprobado a mano.
 - Un commit = un cambio lógico. No mezclar cosas sin relación.
 - Después de cada commit: `git push origin dev`. Si no hay remoto configurado, avisar al usuario.
 
 **Formato del mensaje** (Conventional Commits, descripción en español, en imperativo, sin punto final, máx. 72 caracteres):
+
 ```
 feat(server): añadir salas con token y caducidad
 fix(client): evitar doble envío al pulsar Unirme
@@ -133,9 +142,11 @@ test(chunker): cubrir archivos de 0 bytes
 chore: configurar Vitest
 docs(plan): marcar tareas de la pantalla 1
 ```
+
 Tipos: `feat`, `fix`, `test`, `refactor`, `style`, `docs`, `chore`, `build`. Ámbitos: `server`, `client`, `shared`, `docker`, `plan`.
 
 **Prohibido**
+
 - `git push --force`, `--no-verify`, reescribir historia ya subida.
 - Commit de `.env`, `node_modules`, `dist`, `tmp/` o secretos.
 - `git add .` o `git add -A`: añadir los archivos por su ruta.

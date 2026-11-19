@@ -1,29 +1,36 @@
-import { Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react'
 
-export type Pestana = 'archivos' | 'texto';
+export type Pestana = 'archivos' | 'texto'
 
 type Props = {
-  pestana: Pestana;
-  onPestana(p: Pestana): void;
-  connected: boolean;
-  name: string; // nombre de este dispositivo
-  onRename(): void;
-  onSalir(): void;
-};
+  pestana: Pestana
+  onPestana(p: Pestana): void
+  connected: boolean
+  name: string // nombre de este dispositivo
+  onRename(): void
+  onSalir(): void
+}
 
 const PESTANAS: { id: Pestana; texto: string }[] = [
   { id: 'archivos', texto: 'Archivos' },
   { id: 'texto', texto: 'Texto' },
-];
+]
 
-export default function Header({ pestana, onPestana, connected, name, onRename, onSalir }: Props) {
+export default function Header({
+  pestana,
+  onPestana,
+  connected,
+  name,
+  onRename,
+  onSalir,
+}: Props) {
   // Flechas izquierda/derecha cambian de pestaña, como en cualquier tablist
   function teclas(e: React.KeyboardEvent) {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
-    const otra = PESTANAS.find((p) => p.id !== pestana)!.id;
-    onPestana(otra);
-    document.getElementById(`tab-${otra}`)?.focus();
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    const otra = PESTANAS.find((p) => p.id !== pestana)!.id
+    onPestana(otra)
+    document.getElementById(`tab-${otra}`)?.focus()
   }
 
   return (
@@ -36,7 +43,7 @@ export default function Header({ pestana, onPestana, connected, name, onRename, 
           onKeyDown={teclas}
         >
           {PESTANAS.map(({ id, texto }) => {
-            const activa = pestana === id;
+            const activa = pestana === id
             return (
               <button
                 key={id}
@@ -51,7 +58,7 @@ export default function Header({ pestana, onPestana, connected, name, onRename, 
               >
                 {texto}
               </button>
-            );
+            )
           })}
         </div>
 
@@ -73,11 +80,15 @@ export default function Header({ pestana, onPestana, connected, name, onRename, 
             <Pencil className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{name}</span>
           </button>
-          <button type="button" className="btn btn-secundario px-4 text-sm" onClick={onSalir}>
+          <button
+            type="button"
+            className="btn btn-secundario px-4 text-sm"
+            onClick={onSalir}
+          >
             Salir
           </button>
         </div>
       </div>
     </header>
-  );
+  )
 }
